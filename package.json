@@ -1,0 +1,13 @@
+{
+  "name": "egyptian-id-pdf417-decoder",
+  "version": "1.0.0",
+  "description": "Decode Egyptian National ID PDF417 barcode in the browser - No servers, pure client-side processing",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "serve": "npx http-server"
+  },
+  "keywords": ["egypt", "pdf417", "decoder", "barcode"],
+  "license": "MIT",
+  "author": "Your Name"
+}
