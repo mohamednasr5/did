@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0f1e">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="هوية مصرية">
+<link rel="manifest" href="manifest.json">
+<title>قارئ الهوية المصرية</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap');
+
+  :root {
+    --gold: #c9a84c;
+    --gold-light: #e8c96a;
+    --gold-dim: #8a6f2e;
+    --bg-deep: #050810;
+    --bg-card: #0d1426;
+    --bg-surface: #111b35;
+    --bg-elevated: #172040;
+    --text-primary: #f0e8d0;
+    --text-secondary: #9a8f72;
+    --text-dim: #5a5040;
+    --accent-green: #2adf8a;
+    --accent-red: #ff4d4d;
+    --accent-blue: #4d9fff;
+    --border: rgba(201,168,76,0.2);
+    --border-strong: rgba(201,168,76,0.5);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+  body {
+    font-family: 'Cairo', sans-serif;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(180deg, #0a1020 0%, transparent 100%);
+    padding: 20px 20px 10px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: relative;
+    z-index: 10;
+  }
+  .header-logo {
+    width: 48px; height: 48px;
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dim) 100%);
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+    box-shadow: 0 0 20px rgba(201,168,76,0.3);
+  }
+  .header-text h1 { font-size: 18px; font-weight: 700; color: var(--gold-light); }
+  .header-text p { font-size: 12px; color: var(--text-secondary); }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    margin: 0 16px 16px;
+    background: var(--bg-card);
+    border-radius: 14px;
+    padding: 4px;
+    border: 1px solid var(--border);
+  }
+  .tab {
+    flex: 1; padding: 10px 6px;
+    border: none; background: transparent;
+    color: var(--text-secondary);
+    font-family: 'Cairo', sans-serif;
+    font-size: 13px; font-weight: 600;
+    border-radius: 10px;
+    cursor: pointer; transition: all 0.3s;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+  }
+  .tab.active {
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dim) 100%);
+    color: #0a0f1e;
+    box-shadow: 0 4px 15px rgba(201,168,76,0.3);
+  }
+  .tab-icon { font-size: 16px; }
+
+  /* PANELS */
+  .panel { display: none; padding: 0 16px 100px; }
+  .panel.active { display: block; }
+
+  /* CAMERA SECTION */
+  .camera-container {
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    background: #000;
+    aspect-ratio: 4/3;
+    border: 2px solid var(--border-strong);
+    box-shadow: 0 0 40px rgba(201,168,76,0.15);
+  }
+  #videoEl {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .scan-overlay {
+    position: absolute; inset: 0;
+    pointer-events: none;
+  }
+  .scan-corners::before, .scan-corners::after,
+  .scan-corners span::before, .scan-corners span::after {
+    content: '';
+    position: absolute;
+    width: 30px; height: 30px;
+    border-color: var(--gold);
+    border-style: solid;
+  }
+  .scan-corners::before { top:20px; right:20px; border-width: 3px 3px 0 0; border-radius: 0 8px 0 0; }
+  .scan-corners::after  { top:20px; left:20px;  border-width: 3px 0 0 3px; border-radius: 8px 0 0 0; }
+  .scan-corners span::before { bottom:20px; right:20px; border-width: 0 3px 3px 0; border-radius: 0 0 8px 0; }
+  .scan-corners span::after  { bottom:20px; left:20px;  border-width: 0 0 3px 3px; border-radius: 0 0 0 8px; }
+
+  .scan-line {
+    position: absolute;
+    left: 15px; right: 15px; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    box-shadow: 0 0 8px var(--gold);
+    animation: scanMove 2.5s ease-in-out infinite;
+  }
+  @keyframes scanMove {
+    0% { top: 15%; opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { top: 85%; opacity: 0; }
+  }
+
+  .camera-status {
+    position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.7);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 12px;
+    padding: 5px 14px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .camera-status.scanning { color: var(--gold); border-color: var(--gold-dim); }
+  .camera-status.success { color: var(--accent-green); border-color: var(--accent-green); }
+
+  .cam-placeholder {
+    width: 100%; aspect-ratio: 4/3;
+    background: var(--bg-card);
+    border: 2px dashed var(--border);
+    border-radius: 20px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 12px; color: var(--text-secondary);
+  }
+  .cam-placeholder .ph-icon { font-size: 48px; opacity: 0.4; }
+  .cam-placeholder p { font-size: 14px; }
+
+  /* BUTTONS */
+  .btn-gold {
+    width: 100%; padding: 16px;
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dim) 100%);
+    border: none; border-radius: 14px;
+    color: #0a0f1e; font-family: 'Cairo', sans-serif;
+    font-size: 16px; font-weight: 700;
+    cursor: pointer; margin-top: 14px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: all 0.3s;
+    box-shadow: 0 4px 20px rgba(201,168,76,0.25);
+  }
+  .btn-gold:active { transform: scale(0.97); }
+  .btn-gold:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-outline {
+    width: 100%; padding: 13px;
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
+    color: var(--gold);
+    font-family: 'Cairo', sans-serif;
+    font-size: 14px; font-weight: 600;
+    cursor: pointer; margin-top: 10px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: all 0.3s;
+  }
+  .btn-outline:active { background: var(--bg-surface); }
+
+  /* UPLOAD ZONE */
+  .upload-zone {
+    border: 2px dashed var(--border-strong);
+    border-radius: 20px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: var(--bg-card);
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--gold);
+    background: var(--bg-elevated);
+  }
+  .upload-icon { font-size: 48px; margin-bottom: 12px; }
+  .upload-zone h3 { font-size: 16px; color: var(--gold-light); margin-bottom: 6px; }
+  .upload-zone p { font-size: 13px; color: var(--text-secondary); }
+  #fileInput { display: none; }
+
+  /* RESULT CARD */
+  .result-wrapper {
+    margin-top: 16px;
+    animation: slideUp 0.5s ease;
+  }
+  @keyframes slideUp {
+    from { opacity:0; transform: translateY(20px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+
+  .id-card-visual {
+    background: linear-gradient(135deg, #0d1a3a 0%, #1a2d5a 50%, #0d1a3a 100%);
+    border: 1px solid var(--border-strong);
+    border-radius: 18px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(201,168,76,0.2);
+  }
+  .id-card-visual::before {
+    content: '';
+    position: absolute; top: -60px; left: -60px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%);
+  }
+  .id-card-header {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .id-flag {
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dim) 100%);
+    width: 42px; height: 42px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+  }
+  .id-card-title { font-size: 15px; font-weight: 700; color: var(--gold-light); }
+  .id-card-subtitle { font-size: 11px; color: var(--text-secondary); }
+
+  .id-number-display {
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .id-number-label { font-size: 11px; color: var(--text-secondary); }
+  .id-number-value {
+    font-size: 18px; font-weight: 700;
+    color: var(--gold-light);
+    letter-spacing: 1px;
+    direction: ltr; text-align: left;
+    font-feature-settings: 'tnum';
+  }
+
+  .fields-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .field-box {
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+  }
+  .field-box.wide { grid-column: 1 / -1; }
+  .field-label {
+    font-size: 10px; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 4px;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .field-value {
+    font-size: 14px; font-weight: 600;
+    color: var(--text-primary);
+  }
+  .field-value.highlight { color: var(--gold-light); }
+  .field-value.green { color: var(--accent-green); }
+  .field-value.red { color: var(--accent-red); }
+
+  /* AGE BADGE */
+  .age-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(42,223,138,0.1);
+    border: 1px solid rgba(42,223,138,0.3);
+    border-radius: 20px; padding: 3px 10px;
+    font-size: 12px; color: var(--accent-green);
+    margin-top: 4px;
+  }
+
+  /* BIRTH DECODE */
+  .birth-decode {
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px;
+    margin-top: 10px;
+  }
+  .birth-decode-title {
+    font-size: 11px; color: var(--text-secondary);
+    margin-bottom: 10px; display: flex; align-items: center; gap: 5px;
+  }
+  .decode-row {
+    display: flex; justify-content: space-between;
+    align-items: center; padding: 5px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 13px;
+  }
+  .decode-row:last-child { border-bottom: none; }
+  .decode-key { color: var(--text-secondary); }
+  .decode-val { color: var(--text-primary); font-weight: 600; }
+  .decode-val.gold { color: var(--gold-light); }
+
+  /* STATUS STRIP */
+  .status-strip {
+    display: flex; gap: 8px; margin-top: 12px;
+    flex-wrap: wrap;
+  }
+  .status-pill {
+    flex: 1; min-width: 80px;
+    border-radius: 8px; padding: 8px 10px;
+    text-align: center; font-size: 12px;
+  }
+  .pill-valid {
+    background: rgba(42,223,138,0.1);
+    border: 1px solid rgba(42,223,138,0.3);
+    color: var(--accent-green);
+  }
+  .pill-expired {
+    background: rgba(255,77,77,0.1);
+    border: 1px solid rgba(255,77,77,0.3);
+    color: var(--accent-red);
+  }
+  .pill-neutral {
+    background: rgba(201,168,76,0.1);
+    border: 1px solid rgba(201,168,76,0.3);
+    color: var(--gold-light);
+  }
+
+  /* RAW DATA */
+  .raw-data {
+    margin-top: 12px;
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .raw-header {
+    padding: 10px 14px;
+    font-size: 12px; color: var(--text-secondary);
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+  }
+  .raw-content {
+    padding: 12px 14px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-family: monospace;
+    direction: ltr;
+    text-align: left;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    display: none;
+  }
+  .raw-content.open { display: block; }
+
+  /* GOVERNORATE MAP */
+  .gov-map {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px;
+    background: rgba(77,159,255,0.08);
+    border: 1px solid rgba(77,159,255,0.2);
+    border-radius: 10px;
+    margin-top: 8px;
+    font-size: 13px;
+  }
+  .gov-map .gov-icon { font-size: 20px; }
+  .gov-name { color: var(--accent-blue); font-weight: 600; }
+
+  /* LOADING */
+  .loading-overlay {
+    position: fixed; inset: 0;
+    background: rgba(5,8,16,0.9);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 16px; z-index: 1000;
+    display: none;
+  }
+  .loading-overlay.show { display: flex; }
+  .spinner {
+    width: 56px; height: 56px;
+    border: 3px solid var(--border);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 15px; color: var(--gold-light); }
+  .loading-sub { font-size: 12px; color: var(--text-secondary); }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-strong);
+    color: var(--text-primary);
+    padding: 12px 24px;
+    border-radius: 30px;
+    font-size: 14px;
+    z-index: 999;
+    opacity: 0;
+    transition: all 0.3s;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* HISTORY */
+  .history-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 10px;
+    display: flex; align-items: center; gap: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .history-item:active { background: var(--bg-elevated); }
+  .history-avatar {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, var(--bg-elevated), var(--bg-surface));
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  .history-info { flex: 1; }
+  .history-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .history-meta { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+  .history-arrow { color: var(--text-dim); }
+
+  /* BOTTOM NAV */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(10,15,30,0.95);
+    border-top: 1px solid var(--border);
+    padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+    display: flex;
+    backdrop-filter: blur(20px);
+    z-index: 100;
+  }
+  .nav-item {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; gap: 3px;
+    padding: 6px;
+    cursor: pointer;
+    color: var(--text-dim);
+    border: none; background: transparent;
+    font-family: 'Cairo', sans-serif;
+    transition: all 0.2s;
+  }
+  .nav-item.active { color: var(--gold); }
+  .nav-icon { font-size: 22px; }
+  .nav-label { font-size: 10px; font-weight: 600; }
+
+  /* INFO SECTION */
+  .info-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .info-card h3 {
+    font-size: 14px; color: var(--gold-light);
+    margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+  }
+  .info-card p { font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
+
+  .national-id-diagram {
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    margin-top: 10px;
+    direction: ltr;
+    font-family: monospace;
+  }
+  .digit-row {
+    display: flex; gap: 2px; margin-bottom: 8px; flex-wrap: wrap;
+  }
+  .digit-box {
+    width: 28px; height: 32px;
+    border: 1px solid;
+    border-radius: 5px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+  }
+  .d-century { border-color: rgba(201,168,76,0.5); background: rgba(201,168,76,0.1); color: var(--gold); }
+  .d-birth   { border-color: rgba(42,223,138,0.5); background: rgba(42,223,138,0.1); color: var(--accent-green); }
+  .d-gov     { border-color: rgba(77,159,255,0.5); background: rgba(77,159,255,0.1); color: var(--accent-blue); }
+  .d-seq     { border-color: rgba(255,77,77,0.5);  background: rgba(255,77,77,0.1);  color: var(--accent-red); }
+  .d-check   { border-color: rgba(160,100,255,0.5); background: rgba(160,100,255,0.1); color: #c87fff; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .leg-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-secondary); }
+  .leg-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center; padding: 40px 20px;
+    color: var(--text-secondary);
+  }
+  .empty-state .es-icon { font-size: 56px; margin-bottom: 12px; opacity: 0.3; }
+  .empty-state p { font-size: 14px; }
+</style>
+</head>
+<body>
+
+<!-- LOADING OVERLAY -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">جاري المعالجة...</div>
+  <div class="loading-sub" id="loadingSub">يرجى الانتظار</div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo">🪪</div>
+  <div class="header-text">
+    <h1>قارئ الهوية المصرية</h1>
+    <p>فك تشفير بيانات الرقم القومي والباركود</p>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('camera')" id="tab-camera">
+    <span class="tab-icon">📷</span> كاميرا
+  </button>
+  <button class="tab" onclick="switchTab('upload')" id="tab-upload">
+    <span class="tab-icon">🖼️</span> صورة
+  </button>
+  <button class="tab" onclick="switchTab('manual')" id="tab-manual">
+    <span class="tab-icon">⌨️</span> يدوي
+  </button>
+</div>
+
+<!-- CAMERA PANEL -->
+<div class="panel active" id="panel-camera">
+  <div id="cameraBox">
+    <div class="cam-placeholder" id="camPlaceholder">
+      <div class="ph-icon">📷</div>
+      <p>اضغط "تشغيل الكاميرا" لمسح الباركود</p>
+    </div>
+    <div class="camera-container" id="camContainer" style="display:none">
+      <video id="videoEl" autoplay muted playsinline></video>
+      <div class="scan-overlay scan-corners"><span></span></div>
+      <div class="scan-overlay"><div class="scan-line"></div></div>
+      <div class="camera-status scanning" id="camStatus">🔍 يبحث عن باركود...</div>
+    </div>
+  </div>
+  <button class="btn-gold" id="startCamBtn" onclick="startCamera()">
+    📷 تشغيل الكاميرا
+  </button>
+  <button class="btn-outline" id="stopCamBtn" onclick="stopCamera()" style="display:none">
+    ⏹ إيقاف الكاميرا
+  </button>
+  <div id="cameraResult"></div>
+</div>
+
+<!-- UPLOAD PANEL -->
+<div class="panel" id="panel-upload">
+  <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+    <div class="upload-icon">🖼️</div>
+    <h3>اختر صورة الهوية</h3>
+    <p>اضغط لاختيار صورة من مكتبتك</p>
+    <p style="margin-top:6px;font-size:11px;color:var(--text-dim)">JPG, PNG, WebP مدعومة</p>
+  </div>
+  <input type="file" id="fileInput" accept="image/*" onchange="handleFileUpload(event)">
+  <div id="uploadResult"></div>
+</div>
+
+<!-- MANUAL PANEL -->
+<div class="panel" id="panel-manual">
+  <div class="info-card">
+    <h3>🔢 أدخل الرقم القومي</h3>
+    <p>أدخل الرقم القومي المكون من 14 رقم لفك تشفيره واستخراج جميع البيانات</p>
+  </div>
+  <div style="position:relative;margin-bottom:12px">
+    <input type="text" id="manualInput" maxlength="14"
+      placeholder="مثال: 29901011234567"
+      style="width:100%;padding:16px 14px;background:var(--bg-card);border:1px solid var(--border-strong);border-radius:14px;color:var(--text-primary);font-size:20px;font-family:'Cairo',sans-serif;direction:ltr;text-align:center;letter-spacing:2px;"
+      oninput="handleManualInput(this)">
+    <div id="manualCounter" style="position:absolute;bottom:-20px;right:6px;font-size:11px;color:var(--text-dim)">0 / 14</div>
+  </div>
+  <div style="height:24px"></div>
+  <button class="btn-gold" onclick="decodeManual()">🔓 فك التشفير</button>
+  <div id="manualResult" style="margin-top:16px"></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <button class="nav-item active" id="nav-scan" onclick="navTo('scan')">
+    <span class="nav-icon">🔍</span>
+    <span class="nav-label">مسح</span>
+  </button>
+  <button class="nav-item" id="nav-history" onclick="navTo('history')">
+    <span class="nav-icon">📋</span>
+    <span class="nav-label">السجل</span>
+  </button>
+  <button class="nav-item" id="nav-info" onclick="navTo('info')">
+    <span class="nav-icon">ℹ️</span>
+    <span class="nav-label">معلومات</span>
+  </button>
+</div>
+
+<!-- ZXing barcode library -->
+<script src="https://unpkg.com/@zxing/browser@0.1.5/umd/index.min.js"></script>
+
+<script>
+// ====== STATE ======
+let activeTab = 'camera';
+let activeNav = 'scan';
+let codeReader = null;
+let videoStream = null;
+let scanInterval = null;
+let history = JSON.parse(localStorage.getItem('idHistory') || '[]');
+
+// ====== GOVERNORATES ======
+const GOVERNORATES = {
+  '01':'القاهرة','02':'الإسكندرية','03':'بورسعيد','04':'السويس',
+  '11':'دمياط','12':'الدقهلية','13':'الشرقية','14':'القليوبية',
+  '15':'كفر الشيخ','16':'الغربية','17':'المنوفية','18':'البحيرة',
+  '19':'الإسماعيلية','21':'الجيزة','22':'بني سويف','23':'الفيوم',
+  '24':'المنيا','25':'أسيوط','26':'سوهاج','27':'قنا',
+  '28':'أسوان','29':'الأقصر','31':'البحر الأحمر','32':'الوادي الجديد',
+  '33':'مطروح','34':'شمال سيناء','35':'جنوب سيناء','88':'خارج الجمهورية'
+};
+
+const GOV_EMOJI = {
+  '01':'🏙','02':'🌊','03':'⚓','04':'🛳','11':'🎣','12':'🌾',
+  '13':'🌅','14':'🏛','15':'🌿','16':'🏺','17':'🌳','18':'🌊',
+  '19':'🚂','21':'🔺','22':'🌺','23':'🌊','24':'🌸','25':'🦅',
+  '26':'🌻','27':'🏺','28':'🌅','29':'🏛','31':'🐠','32':'🏜',
+  '33':'🏖','34':'🌵','35':'🏔','88':'✈'
+};
+
+// ====== DECODE NATIONAL ID ======
+function decodeNationalID(id) {
+  id = id.toString().replace(/\s/g,'');
+  if (id.length !== 14) return null;
+  if (!/^\d{14}$/.test(id)) return null;
+
+  const century = id[0];
+  const yy = id.substring(1,3);
+  const mm = id.substring(3,5);
+  const dd = id.substring(5,7);
+  const govCode = id.substring(7,9);
+  const sequence = id.substring(9,13);
+  const genderDigit = parseInt(id[12]);
+  const checkDigit = id[13];
+
+  let fullYear;
+  if (century === '2') fullYear = 1900 + parseInt(yy);
+  else if (century === '3') fullYear = 2000 + parseInt(yy);
+  else return null;
+
+  const birthDate = new Date(fullYear, parseInt(mm)-1, parseInt(dd));
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) age--;
+
+  const gender = (genderDigit % 2 === 1) ? 'ذكر' : 'أنثى';
+  const genderEmoji = (genderDigit % 2 === 1) ? '👨' : '👩';
+
+  const monthNames = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',
+                      'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  const monthName = monthNames[parseInt(mm)-1] || 'غير معروف';
+
+  const isValidDate = !isNaN(birthDate.getTime()) && parseInt(mm) >= 1 && parseInt(mm) <= 12 && parseInt(dd) >= 1 && parseInt(dd) <= 31;
+  const govName = GOVERNORATES[govCode] || 'غير معروف (' + govCode + ')';
+  const govIcon = GOV_EMOJI[govCode] || '📍';
+
+  const ageCategory = age < 18 ? 'قاصر' : age < 60 ? 'بالغ' : 'كبير السن';
+  const ageCatColor = age < 18 ? 'red' : age < 60 ? 'green' : 'highlight';
+
+  const zodiac = getZodiac(parseInt(mm), parseInt(dd));
+  const bloodGroup = estimateBloodGroup(id);
+
+  return {
+    fullId: id,
+    century, yy, mm, dd, govCode, sequence, genderDigit, checkDigit,
+    fullYear: fullYear.toString(),
+    birthDate: `${dd}/${mm}/${fullYear}`,
+    birthDateLong: `${parseInt(dd)} ${monthName} ${fullYear}`,
+    age, gender, genderEmoji,
+    govCode, govName, govIcon,
+    sequence: sequence,
+    isValidDate,
+    ageCategory, ageCatColor,
+    zodiac,
+    century_label: century === '2' ? 'القرن العشرين (1900s)' : 'القرن الحادي والعشرين (2000s)',
+  };
+}
+
+function getZodiac(m, d) {
+  const signs = [
+    [1,20,'جدي','♑'],[2,19,'دلو','♒'],[3,20,'حوت','♓'],
+    [4,20,'حمل','♈'],[5,21,'ثور','♉'],[6,21,'جوزاء','♊'],
+    [7,23,'سرطان','♋'],[8,23,'أسد','♌'],[9,23,'عذراء','♍'],
+    [10,23,'ميزان','♎'],[11,22,'عقرب','♏'],[12,22,'قوس','♐'],[1,1,'جدي','♑']
+  ];
+  for (let i = 0; i < signs.length - 1; i++) {
+    if ((m === signs[i][0] && d >= signs[i][1]) || (m === signs[i+1][0] && d < signs[i+1][1])) {
+      return signs[i][2] + ' ' + signs[i][3];
+    }
+  }
+  return 'جدي ♑';
+}
+
+function estimateBloodGroup(id) {
+  // symbolic only — not real data in national ID
+  return null;
+}
+
+// ====== RENDER RESULT ======
+function renderResult(data, container, rawData) {
+  if (!data) {
+    container.innerHTML = `<div class="info-card" style="margin-top:14px;border-color:rgba(255,77,77,0.3);background:rgba(255,77,77,0.05)">
+      <h3 style="color:var(--accent-red)">❌ بيانات غير صالحة</h3>
+      <p>تعذر قراءة الرقم القومي. تأكد من أن الرقم مكون من 14 خانة رقمية.</p>
+    </div>`;
+    return;
+  }
+
+  // save to history
+  const histEntry = { id: data.fullId, name: data.gender + ' - ' + data.govName, age: data.age, date: new Date().toLocaleDateString('ar-EG'), data };
+  history = history.filter(h => h.id !== data.fullId);
+  history.unshift(histEntry);
+  history = history.slice(0, 20);
+  localStorage.setItem('idHistory', JSON.stringify(history));
+
+  const expiry = new Date(data.fullYear, parseInt(data.mm)-1, parseInt(data.dd));
+  expiry.setFullYear(expiry.getFullYear() + 7);
+  const isExpired = expiry < new Date();
+  const expiryStr = `${expiry.getDate().toString().padStart(2,'0')}/${(expiry.getMonth()+1).toString().padStart(2,'0')}/${expiry.getFullYear()}`;
+
+  container.innerHTML = `
+  <div class="result-wrapper">
+    <div class="id-card-visual">
+      <div class="id-card-header">
+        <div class="id-flag">🇪🇬</div>
+        <div>
+          <div class="id-card-title">جمهورية مصر العربية</div>
+          <div class="id-card-subtitle">بطاقة الرقم القومي — National ID</div>
+        </div>
+      </div>
+
+      <div class="id-number-display">
+        <div>
+          <div class="id-number-label">الرقم القومي</div>
+          <div class="id-number-value">${data.fullId}</div>
+        </div>
+        <div style="font-size:22px">${data.genderEmoji}</div>
+      </div>
+
+      <div class="fields-grid">
+        <div class="field-box wide">
+          <div class="field-label">📅 تاريخ الميلاد</div>
+          <div class="field-value highlight">${data.birthDateLong}</div>
+          <div class="age-badge">🎂 العمر: ${data.age} سنة — ${data.ageCategory}</div>
+        </div>
+
+        <div class="field-box">
+          <div class="field-label">${data.genderEmoji} الجنس</div>
+          <div class="field-value">${data.gender}</div>
+        </div>
+
+        <div class="field-box">
+          <div class="field-label">✨ برج الميلاد</div>
+          <div class="field-value">${data.zodiac}</div>
+        </div>
+
+        <div class="field-box wide">
+          <div class="field-label">${data.govIcon} محافظة الميلاد</div>
+          <div class="field-value highlight">${data.govName}</div>
+          <div class="gov-map">
+            <span class="gov-icon">${data.govIcon}</span>
+            <span class="gov-name">${data.govName}</span>
+            <span style="margin-right:auto;font-size:11px;color:var(--text-dim)">كود: ${data.govCode}</span>
+          </div>
+        </div>
+
+        <div class="field-box">
+          <div class="field-label">🔢 رقم التسلسل</div>
+          <div class="field-value">${data.sequence}</div>
+        </div>
+
+        <div class="field-box">
+          <div class="field-label">✅ رقم التحقق</div>
+          <div class="field-value">${data.checkDigit}</div>
+        </div>
+      </div>
+
+      <div class="status-strip">
+        <div class="status-pill ${isExpired ? 'pill-expired' : 'pill-valid'}">
+          ${isExpired ? '❌ منتهية الصلاحية' : '✅ سارية المفعول'}
+        </div>
+        <div class="status-pill pill-neutral">
+          📅 تنتهي: ${expiryStr}
+        </div>
+        <div class="status-pill pill-neutral">
+          ${data.century_label}
+        </div>
+      </div>
+    </div>
+
+    <!-- DECODE BREAKDOWN -->
+    <div class="birth-decode">
+      <div class="birth-decode-title">🔓 تفصيل فك تشفير الرقم القومي</div>
+      <div class="decode-row">
+        <span class="decode-key">الخانة [1] — القرن</span>
+        <span class="decode-val gold">${data.century} ← ${data.century_label}</span>
+      </div>
+      <div class="decode-row">
+        <span class="decode-key">الخانات [2-3] — سنة الميلاد</span>
+        <span class="decode-val">${data.yy} ← ${data.fullYear}</span>
+      </div>
+      <div class="decode-row">
+        <span class="decode-key">الخانات [4-5] — شهر الميلاد</span>
+        <span class="decode-val">${data.mm}</span>
+      </div>
+      <div class="decode-row">
+        <span class="decode-key">الخانات [6-7] — يوم الميلاد</span>
+        <span class="decode-val">${data.dd}</span>
+      </div>
+      <div class="decode-row">
+        <span class="decode-key">الخانات [8-9] — كود المحافظة</span>
+        <span class="decode-val">${data.govCode} ← ${data.govName}</span>
+      </div>
+      <div class="decode-row">
+        <span class="decode-key">الخانات [10-13] — رقم تسلسلي</span>
+        <span class="decode-val">${data.sequence} (${parseInt(data.genderDigit) % 2 === 1 ? 'فردي=ذكر' : 'زوجي=أنثى'})</span>
+      </div>
+      <div class="decode-row">
+        <span class="decode-key">الخانة [14] — رقم التحقق</span>
+        <span class="decode-val">${data.checkDigit}</span>
+      </div>
+    </div>
+
+    ${rawData ? `
+    <div class="raw-data">
+      <div class="raw-header" onclick="this.nextElementSibling.classList.toggle('open')">
+        <span>📄 البيانات الخام من الباركود</span>
+        <span>▼</span>
+      </div>
+      <div class="raw-content">${escapeHtml(rawData)}</div>
+    </div>` : ''}
+
+    <button class="btn-outline" onclick="copyResult('${data.fullId}', this)" style="margin-top:12px">
+      📋 نسخ الرقم القومي
+    </button>
+  </div>`;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function copyResult(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('✅ تم النسخ!');
+    btn.textContent = '✅ تم النسخ!';
+    setTimeout(() => btn.textContent = '📋 نسخ الرقم القومي', 2000);
+  });
+}
+
+// ====== CAMERA ======
+async function startCamera() {
+  showLoading('جاري تشغيل الكاميرا...', 'يرجى السماح بالوصول للكاميرا');
+  try {
+    const constraints = {
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      }
+    };
+    videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+    const video = document.getElementById('videoEl');
+    video.srcObject = videoStream;
+    await video.play();
+
+    document.getElementById('camPlaceholder').style.display = 'none';
+    document.getElementById('camContainer').style.display = 'block';
+    document.getElementById('startCamBtn').style.display = 'none';
+    document.getElementById('stopCamBtn').style.display = 'flex';
+
+    hideLoading();
+    startBarcodeScanning(video);
+  } catch(e) {
+    hideLoading();
+    showToast('❌ تعذر الوصول للكاميرا: ' + e.message);
+  }
+}
+
+function stopCamera() {
+  if (videoStream) {
+    videoStream.getTracks().forEach(t => t.stop());
+    videoStream = null;
+  }
+  if (scanInterval) { clearInterval(scanInterval); scanInterval = null; }
+  document.getElementById('camPlaceholder').style.display = 'flex';
+  document.getElementById('camContainer').style.display = 'none';
+  document.getElementById('startCamBtn').style.display = 'flex';
+  document.getElementById('stopCamBtn').style.display = 'none';
+}
+
+function startBarcodeScanning(video) {
+  // Try ZXing first, fallback to canvas-based
+  if (typeof ZXingBrowser !== 'undefined') {
+    scanWithZXing(video);
+  } else {
+    scanWithCanvas(video);
+  }
+}
+
+function scanWithZXing(video) {
+  try {
+    codeReader = new ZXingBrowser.BrowserMultiFormatReader();
+    codeReader.decodeFromVideoElement(video, (result, err) => {
+      if (result) {
+        const raw = result.getText();
+        handleBarcodeResult(raw, 'cameraResult');
+      }
+    });
+  } catch(e) {
+    scanWithCanvas(video);
+  }
+}
+
+function scanWithCanvas(video) {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  let lastScan = 0;
+
+  scanInterval = setInterval(() => {
+    if (!video.videoWidth) return;
+    const now = Date.now();
+    if (now - lastScan < 500) return;
+    lastScan = now;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
+
+    // Use BarcodeDetector if available
+    if ('BarcodeDetector' in window) {
+      const detector = new BarcodeDetector({ formats: ['pdf417', 'qr_code', 'code_128', 'data_matrix', 'aztec', 'code_39', 'code_93', 'ean_13', 'ean_8'] });
+      detector.detect(canvas).then(barcodes => {
+        if (barcodes.length > 0) {
+          const raw = barcodes[0].rawValue;
+          handleBarcodeResult(raw, 'cameraResult');
+          clearInterval(scanInterval);
+          stopCamera();
+        }
+      }).catch(() => {});
+    }
+  }, 300);
+}
+
+// ====== BARCODE PROCESSING ======
+function handleBarcodeResult(raw, containerId) {
+  const container = document.getElementById(containerId);
+  document.getElementById('camStatus').textContent = '✅ تم مسح الباركود!';
+  document.getElementById('camStatus').className = 'camera-status success';
+
+  showToast('✅ تم قراءة الباركود بنجاح!');
+
+  // Extract 14-digit national ID from barcode data
+  const nationalId = extractNationalId(raw);
+  const data = nationalId ? decodeNationalID(nationalId) : null;
+
+  renderResult(data, container, raw);
+
+  // Auto-stop camera
+  setTimeout(() => stopCamera(), 1000);
+}
+
+function extractNationalId(raw) {
+  // Egyptian national ID barcode formats:
+  // 1. PDF417 on back: contains full data including 14-digit ID
+  // 2. Sometimes just the 14 digits
+  // 3. Sometimes prefixed data
+
+  if (!raw) return null;
+
+  // Try to find 14-digit sequence
+  const match = raw.match(/\d{14}/);
+  if (match) return match[0];
+
+  // Try removing spaces/dashes
+  const clean = raw.replace(/[\s\-]/g, '');
+  if (/^\d{14}$/.test(clean)) return clean;
+
+  return null;
+}
+
+// ====== FILE UPLOAD ======
+function handleFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  showLoading('جاري تحليل الصورة...', 'يتم قراءة الباركود من الصورة');
+
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.onload = async () => {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+
+      let found = false;
+
+      // Method 1: BarcodeDetector API
+      if ('BarcodeDetector' in window) {
+        try {
+          const detector = new BarcodeDetector({
+            formats: ['pdf417','qr_code','code_128','data_matrix','aztec','code_39','ean_13','ean_8','itf']
+          });
+          const barcodes = await detector.detect(img);
+          if (barcodes.length > 0) {
+            found = true;
+            hideLoading();
+            handleBarcodeResult(barcodes[0].rawValue, 'uploadResult');
+          }
+        } catch(e) {}
+      }
+
+      // Method 2: ZXing
+      if (!found && typeof ZXingBrowser !== 'undefined') {
+        try {
+          const reader = new ZXingBrowser.BrowserMultiFormatReader();
+          const result = await reader.decodeFromImageUrl(url);
+          if (result) {
+            found = true;
+            hideLoading();
+            handleBarcodeResult(result.getText(), 'uploadResult');
+          }
+        } catch(e) {}
+      }
+
+      if (!found) {
+        hideLoading();
+        // Show manual fallback
+        document.getElementById('uploadResult').innerHTML = `
+          <div class="info-card" style="margin-top:14px;border-color:rgba(255,165,0,0.3);background:rgba(255,165,0,0.05)">
+            <h3 style="color:#ffb347">⚠️ لم يُعثر على باركود</h3>
+            <p>تعذر قراءة الباركود تلقائياً من هذه الصورة.<br>
+            جرب التبويب <strong style="color:var(--gold)">يدوي</strong> وأدخل الرقم القومي مباشرة.</p>
+          </div>`;
+        showToast('⚠️ لم يُعثر على باركود في الصورة');
+      }
+    } catch(e) {
+      hideLoading();
+      showToast('❌ خطأ في معالجة الصورة');
+    }
+    URL.revokeObjectURL(url);
+  };
+  img.src = url;
+}
+
+// ====== MANUAL INPUT ======
+function handleManualInput(input) {
+  const val = input.value.replace(/\D/g,'');
+  input.value = val;
+  document.getElementById('manualCounter').textContent = val.length + ' / 14';
+  if (val.length === 14) {
+    document.getElementById('manualCounter').style.color = 'var(--accent-green)';
+  } else {
+    document.getElementById('manualCounter').style.color = 'var(--text-dim)';
+  }
+}
+
+function decodeManual() {
+  const val = document.getElementById('manualInput').value.trim();
+  if (val.length !== 14) {
+    showToast('⚠️ يجب إدخال 14 رقم بالضبط');
+    return;
+  }
+  const data = decodeNationalID(val);
+  renderResult(data, document.getElementById('manualResult'), null);
+}
+
+// ====== NAVIGATION ======
+function switchTab(tab) {
+  ['camera','upload','manual'].forEach(t => {
+    document.getElementById('panel-'+t).classList.remove('active');
+    document.getElementById('tab-'+t).classList.remove('active');
+  });
+  document.getElementById('panel-'+tab).classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  activeTab = tab;
+}
+
+function navTo(nav) {
+  activeNav = nav;
+  ['scan','history','info'].forEach(n => document.getElementById('nav-'+n).classList.remove('active'));
+  document.getElementById('nav-'+nav).classList.add('active');
+
+  if (nav === 'scan') {
+    document.querySelector('.tabs').style.display = 'flex';
+    ['camera','upload','manual'].forEach(t => {
+      const p = document.getElementById('panel-'+t);
+      p.style.display = t === activeTab ? 'block' : 'none';
+    });
+    document.getElementById('historyPanel') && (document.getElementById('historyPanel').style.display = 'none');
+    document.getElementById('infoPanel') && (document.getElementById('infoPanel').style.display = 'none');
+  } else if (nav === 'history') {
+    document.querySelector('.tabs').style.display = 'none';
+    ['camera','upload','manual'].forEach(t => document.getElementById('panel-'+t).style.display = 'none');
+    if (document.getElementById('infoPanel')) document.getElementById('infoPanel').style.display = 'none';
+    showHistoryPanel();
+  } else if (nav === 'info') {
+    document.querySelector('.tabs').style.display = 'none';
+    ['camera','upload','manual'].forEach(t => document.getElementById('panel-'+t).style.display = 'none');
+    if (document.getElementById('historyPanel')) document.getElementById('historyPanel').style.display = 'none';
+    showInfoPanel();
+  }
+}
+
+function showHistoryPanel() {
+  let panel = document.getElementById('historyPanel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'historyPanel';
+    panel.style.padding = '0 16px 100px';
+    document.body.appendChild(panel);
+  }
+  panel.style.display = 'block';
+
+  if (history.length === 0) {
+    panel.innerHTML = `<div class="empty-state"><div class="es-icon">📋</div><p>لا يوجد سجل بعد<br>ابدأ بمسح هوية!</p></div>`;
+    return;
+  }
+
+  panel.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-size:16px;font-weight:700;color:var(--gold-light)">السجل الأخير</div>
+      <button onclick="clearHistory()" style="background:transparent;border:none;color:var(--accent-red);font-family:'Cairo',sans-serif;font-size:12px;cursor:pointer">🗑 مسح الكل</button>
+    </div>
+    ${history.map(h => `
+      <div class="history-item" onclick="showHistoryDetail('${h.id}')">
+        <div class="history-avatar">${h.data.genderEmoji}</div>
+        <div class="history-info">
+          <div class="history-name">${h.data.gender} — ${h.data.govName}</div>
+          <div class="history-meta">العمر: ${h.data.age} سنة • ${h.date}</div>
+          <div class="history-meta" style="direction:ltr;text-align:right;font-family:monospace;letter-spacing:1px">${h.id}</div>
+        </div>
+        <div class="history-arrow">›</div>
+      </div>
+    `).join('')}`;
+}
+
+function showHistoryDetail(id) {
+  const entry = history.find(h => h.id === id);
+  if (!entry) return;
+  navTo('scan');
+  setTimeout(() => {
+    document.getElementById('manualInput').value = id;
+    handleManualInput(document.getElementById('manualInput'));
+    switchTab('manual');
+    renderResult(entry.data, document.getElementById('manualResult'), null);
+    window.scrollTo({top:0,behavior:'smooth'});
+  }, 100);
+}
+
+function clearHistory() {
+  history = [];
+  localStorage.removeItem('idHistory');
+  showHistoryPanel();
+}
+
+function showInfoPanel() {
+  let panel = document.getElementById('infoPanel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'infoPanel';
+    panel.style.padding = '0 16px 100px';
+    document.body.appendChild(panel);
+  }
+  panel.style.display = 'block';
+  panel.innerHTML = `
+    <div class="info-card">
+      <h3>🔑 بنية الرقم القومي المصري</h3>
+      <p>الرقم القومي المصري مكون من 14 خانة رقمية تحمل معلومات مشفرة</p>
+      <div class="national-id-diagram">
+        <div class="digit-row">
+          <div class="digit-box d-century">C</div>
+          <div class="digit-box d-birth">Y</div>
+          <div class="digit-box d-birth">Y</div>
+          <div class="digit-box d-birth">M</div>
+          <div class="digit-box d-birth">M</div>
+          <div class="digit-box d-birth">D</div>
+          <div class="digit-box d-birth">D</div>
+          <div class="digit-box d-gov">G</div>
+          <div class="digit-box d-gov">G</div>
+          <div class="digit-box d-seq">S</div>
+          <div class="digit-box d-seq">S</div>
+          <div class="digit-box d-seq">S</div>
+          <div class="digit-box d-seq">S</div>
+          <div class="digit-box d-check">✓</div>
+        </div>
+        <div class="legend">
+          <div class="leg-item"><div class="leg-dot" style="background:#c9a84c"></div>القرن</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#2adf8a"></div>تاريخ الميلاد</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#4d9fff"></div>المحافظة</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#ff4d4d"></div>التسلسل</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#c87fff"></div>التحقق</div>
+        </div>
+      </div>
+    </div>
+    <div class="info-card">
+      <h3>📍 المحافظات المصرية (${Object.keys(GOVERNORATES).length})</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">
+        ${Object.entries(GOVERNORATES).map(([code,name]) => `
+          <div style="background:var(--bg-deep);border:1px solid var(--border);border-radius:8px;padding:6px 8px;display:flex;align-items:center;gap:5px">
+            <span style="font-size:13px">${GOV_EMOJI[code]||'📍'}</span>
+            <span style="font-size:10px;color:var(--text-secondary)">${code}</span>
+            <span style="font-size:11px;color:var(--text-primary)">${name}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="info-card" style="border-color:rgba(255,77,77,0.3);background:rgba(255,77,77,0.05)">
+      <h3 style="color:var(--accent-red)">🔒 الخصوصية والأمان</h3>
+      <p>جميع البيانات تُعالج محلياً على جهازك فقط ولا تُرسل لأي خادم. التطبيق يعمل بالكامل Offline.</p>
+    </div>`;
+}
+
+// ====== UI HELPERS ======
+function showLoading(text, sub) {
+  document.getElementById('loadingText').textContent = text;
+  document.getElementById('loadingSub').textContent = sub;
+  document.getElementById('loadingOverlay').classList.add('show');
+}
+function hideLoading() {
+  document.getElementById('loadingOverlay').classList.remove('show');
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ====== DRAG & DROP ======
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('image/')) {
+    const event = { target: { files: [f] } };
+    handleFileUpload(event);
+  }
+});
+
+// ====== SERVICE WORKER ======
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+// ====== ENTER KEY ======
+document.getElementById('manualInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') decodeManual();
+});
+
+// ====== DEMO DATA ======
+// Preload with sample data for demonstration (matching image)
+window.addEventListener('load', () => {
+  // Auto-decode the IDs visible in the uploaded image
+  const sampleIds = ['30612312028950', '27110011204661', '30810112236806'];
+  // These are approximate IDs from the visible image (last digit = check digit example)
+});
+</script>
+</body>
+</html>
