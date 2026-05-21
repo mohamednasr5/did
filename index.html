@@ -3,804 +3,797 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="description" content="فك تشفير باركود PDF417 على الهوية المصرية في المتصفح">
 <meta name="theme-color" content="#0d1117">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="قارئ الهوية">
 <title>قارئ الهوية المصرية — PDF417</title>
+
+<!-- Preload WASM Library for Better Performance -->
+<link rel="preload" href="https://cdn.jsdelivr.net/npm/zxing-wasm@latest/dist/iife/full/index.js" as="script">
+
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap');
+
 :root {
-  --gold:#c9a84c; --gold2:#e8c96a; --gold3:#8a6f2e;
-  --bg0:#050810; --bg1:#0c1220; --bg2:#111b35; --bg3:#172040;
-  --t1:#f0e8d0; --t2:#9a8f72; --t3:#5a5040;
-  --green:#2adf8a; --red:#ff5252; --blue:#5ba4f5; --orange:#ffb347;
-  --bdr:rgba(201,168,76,.2); --bdr2:rgba(201,168,76,.45);
+  --gold: #c9a84c;
+  --gold2: #e8c96a;
+  --gold3: #8a6f2e;
+  --bg0: #050810;
+  --bg1: #0c1220;
+  --bg2: #111b35;
+  --bg3: #172040;
+  --t1: #f0e8d0;
+  --t2: #9a8f72;
+  --t3: #5a5040;
+  --green: #2adf8a;
+  --red: #ff5252;
+  --blue: #5ba4f5;
+  --orange: #ffb347;
+  --bdr: rgba(201, 168, 76, 0.2);
+  --bdr2: rgba(201, 168, 76, 0.45);
 }
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;overflow-x:hidden;background:var(--bg0);color:var(--t1);font-family:'Cairo',sans-serif}
 
-/* ── HEADER ── */
-.hdr{display:flex;align-items:center;gap:12px;padding:18px 16px 10px;background:linear-gradient(180deg,#0a1020,transparent)}
-.hdr-logo{width:46px;height:46px;border-radius:13px;background:linear-gradient(135deg,var(--gold),var(--gold3));display:flex;align-items:center;justify-content:center;font-size:23px;box-shadow:0 0 22px rgba(201,168,76,.35);flex-shrink:0}
-.hdr h1{font-size:17px;font-weight:700;color:var(--gold2);line-height:1.2}
-.hdr p{font-size:11px;color:var(--t2)}
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
 
-/* ── TABS ── */
-.tabs{display:flex;margin:0 14px 14px;background:var(--bg1);border-radius:13px;padding:4px;border:1px solid var(--bdr)}
-.tab{flex:1;padding:9px 4px;border:none;background:transparent;color:var(--t2);font-family:'Cairo',sans-serif;font-size:12px;font-weight:600;border-radius:9px;cursor:pointer;transition:.25s;display:flex;align-items:center;justify-content:center;gap:4px}
-.tab.on{background:linear-gradient(135deg,var(--gold),var(--gold3));color:#0a0f1e;box-shadow:0 3px 14px rgba(201,168,76,.3)}
+html, body {
+  height: 100%;
+  overflow-x: hidden;
+  background: var(--bg0);
+  color: var(--t1);
+  font-family: 'Cairo', sans-serif;
+}
 
-/* ── PANELS ── */
-.pnl{display:none;padding:0 14px 110px}
-.pnl.on{display:block}
+/* HEADER */
+.hdr {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 16px 10px;
+  background: linear-gradient(180deg, #0a1020, transparent);
+}
 
-/* ── CAMERA ── */
-.cam-wrap{position:relative;border-radius:18px;overflow:hidden;background:#000;aspect-ratio:4/3;border:2px solid var(--bdr2);box-shadow:0 0 36px rgba(201,168,76,.12)}
-#vid{width:100%;height:100%;object-fit:cover;display:block}
-.corners{position:absolute;inset:0;pointer-events:none}
-.corners::before,.corners::after,.corners span::before,.corners span::after{content:'';position:absolute;width:28px;height:28px;border-color:var(--gold);border-style:solid}
-.corners::before{top:18px;right:18px;border-width:3px 3px 0 0;border-radius:0 8px 0 0}
-.corners::after{top:18px;left:18px;border-width:3px 0 0 3px;border-radius:8px 0 0 0}
-.corners span::before{bottom:18px;right:18px;border-width:0 3px 3px 0;border-radius:0 0 8px 0}
-.corners span::after{bottom:18px;left:18px;border-width:0 0 3px 3px;border-radius:0 0 0 8px}
-.scanline{position:absolute;left:14px;right:14px;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);box-shadow:0 0 7px var(--gold);animation:scan 2.5s ease-in-out infinite}
-@keyframes scan{0%{top:12%;opacity:0}10%{opacity:1}90%{opacity:1}100%{top:88%;opacity:0}}
-.cam-lbl{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.72);border:1px solid var(--bdr);color:var(--t2);font-size:11px;padding:4px 13px;border-radius:20px;white-space:nowrap}
-.cam-lbl.ok{color:var(--green);border-color:var(--green)}
-.cam-ph{width:100%;aspect-ratio:4/3;background:var(--bg1);border:2px dashed var(--bdr);border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--t2)}
-.cam-ph .ico{font-size:44px;opacity:.35}
+.hdr-logo {
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, var(--gold), var(--gold3));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 23px;
+  box-shadow: 0 0 22px rgba(201, 168, 76, 0.35);
+  flex-shrink: 0;
+}
 
-/* ── BUTTONS ── */
-.btn{width:100%;padding:15px;border:none;border-radius:13px;font-family:'Cairo',sans-serif;font-size:15px;font-weight:700;cursor:pointer;margin-top:12px;display:flex;align-items:center;justify-content:center;gap:7px;transition:.25s}
-.btn:active{transform:scale(.97)}
-.btn-g{background:linear-gradient(135deg,var(--gold),var(--gold3));color:#0a0f1e;box-shadow:0 4px 18px rgba(201,168,76,.25)}
-.btn-o{background:transparent;border:1px solid var(--bdr2);color:var(--gold);font-size:14px;padding:12px}
-.btn:disabled{opacity:.45;cursor:not-allowed}
+.hdr h1 {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--gold2);
+  line-height: 1.2;
+}
 
-/* ── UPLOAD ── */
-.upl{border:2px dashed var(--bdr2);border-radius:18px;padding:38px 18px;text-align:center;cursor:pointer;background:var(--bg1);transition:.25s}
-.upl:hover,.upl.dov{border-color:var(--gold);background:var(--bg3)}
-.upl h3{font-size:15px;color:var(--gold2);margin:10px 0 5px}
-.upl p{font-size:12px;color:var(--t2)}
-#fi{display:none}
+.hdr p {
+  font-size: 11px;
+  color: var(--t2);
+}
 
-/* ── MANUAL INPUT ── */
-.inp-box{position:relative;margin-bottom:14px}
-#mi{width:100%;padding:16px;background:var(--bg1);border:1px solid var(--bdr2);border-radius:13px;color:var(--t1);font-size:20px;font-family:'Cairo',sans-serif;direction:ltr;text-align:center;letter-spacing:3px}
-#mi:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 2px rgba(201,168,76,.15)}
-#cnt{position:absolute;bottom:-19px;right:5px;font-size:11px;color:var(--t3)}
+.status-badge {
+  margin-right: auto;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  background: rgba(42, 223, 138, 0.1);
+  border: 1px solid rgba(42, 223, 138, 0.3);
+  color: var(--green);
+}
 
-/* ── RESULT CARD ── */
-.res{animation:up .45s ease;margin-top:14px}
-@keyframes up{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.status-badge.warning {
+  background: rgba(255, 179, 71, 0.1);
+  border-color: rgba(255, 179, 71, 0.3);
+  color: var(--orange);
+}
 
-.id-card{background:linear-gradient(135deg,#0d1a3a,#1a2d5a 50%,#0d1a3a);border:1px solid var(--bdr2);border-radius:18px;padding:18px;position:relative;overflow:hidden}
-.id-card::before{content:'';position:absolute;top:-50px;left:-50px;width:180px;height:180px;background:radial-gradient(circle,rgba(201,168,76,.07),transparent 70%)}
-.id-hdr{display:flex;align-items:center;gap:11px;margin-bottom:14px;padding-bottom:13px;border-bottom:1px solid var(--bdr)}
-.id-flag{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--gold),var(--gold3));display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
-.id-hdr-t{font-size:14px;font-weight:700;color:var(--gold2)}
-.id-hdr-s{font-size:10px;color:var(--t2)}
+/* LOADING OVERLAY */
+#lov {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 8, 16, 0.92);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  z-index: 999;
+  backdrop-filter: blur(4px);
+}
 
-.id-num{background:var(--bg0);border:1px solid var(--bdr);border-radius:9px;padding:11px 14px;margin-bottom:13px;display:flex;align-items:center;justify-content:space-between}
-.id-num-lbl{font-size:10px;color:var(--t2)}
-.id-num-val{font-size:17px;font-weight:700;color:var(--gold2);letter-spacing:1.5px;direction:ltr;font-feature-settings:'tnum'}
+#lov.on {
+  display: flex;
+}
 
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-.fld{background:var(--bg0);border:1px solid var(--bdr);border-radius:11px;padding:11px}
-.fld.w2{grid-column:1/-1}
-.fld-k{font-size:10px;color:var(--t3);margin-bottom:3px;display:flex;align-items:center;gap:3px}
-.fld-v{font-size:13px;font-weight:600;color:var(--t1)}
-.fld-v.g{color:var(--gold2)}
-.fld-v.gr{color:var(--green)}
-.fld-v.rd{color:var(--red)}
+.spin {
+  width: 52px;
+  height: 52px;
+  border: 3px solid var(--bdr);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: sp 0.75s linear infinite;
+}
 
-.age-b{display:inline-flex;align-items:center;gap:4px;background:rgba(42,223,138,.1);border:1px solid rgba(42,223,138,.3);border-radius:20px;padding:2px 9px;font-size:11px;color:var(--green);margin-top:4px}
-.gov-b{display:flex;align-items:center;gap:8px;padding:8px;background:rgba(91,164,245,.08);border:1px solid rgba(91,164,245,.2);border-radius:9px;margin-top:7px;font-size:12px}
-.gov-b .gn{color:var(--blue);font-weight:600}
+@keyframes sp {
+  to { transform: rotate(360deg); }
+}
 
-.pills{display:flex;gap:7px;margin-top:11px;flex-wrap:wrap}
-.pill{flex:1;min-width:80px;border-radius:7px;padding:7px 8px;text-align:center;font-size:11px}
-.pv{background:rgba(42,223,138,.1);border:1px solid rgba(42,223,138,.25);color:var(--green)}
-.px{background:rgba(255,82,82,.1);border:1px solid rgba(255,82,82,.25);color:var(--red)}
-.pn{background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.25);color:var(--gold2)}
+#ltxt {
+  font-size: 14px;
+  color: var(--gold2);
+  font-weight: 600;
+}
 
-/* ── DECODE TABLE ── */
-.dtbl{margin-top:11px;background:var(--bg0);border:1px solid var(--bdr);border-radius:11px;overflow:hidden}
-.dtbl-hd{padding:9px 13px;font-size:11px;color:var(--t2);border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:5px}
-.drow{display:flex;justify-content:space-between;align-items:center;padding:6px 13px;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px}
-.drow:last-child{border-bottom:none}
-.dk{color:var(--t2)}
-.dv{color:var(--t1);font-weight:600}
-.dv.g{color:var(--gold2)}
+#lsub {
+  font-size: 11px;
+  color: var(--t2);
+}
 
-/* ── RAW DATA ── */
-.raw{margin-top:11px;background:var(--bg0);border:1px solid var(--bdr);border-radius:11px;overflow:hidden}
-.raw-h{padding:9px 13px;font-size:11px;color:var(--t2);display:flex;justify-content:space-between;cursor:pointer;border-bottom:1px solid var(--bdr)}
-.raw-b{padding:11px 13px;font-size:11px;color:var(--t2);font-family:monospace;direction:ltr;text-align:left;overflow-x:auto;white-space:pre-wrap;word-break:break-all;display:none}
-.raw-b.on{display:block}
+/* TABS */
+.tabs {
+  display: flex;
+  margin: 0 14px 14px;
+  background: var(--bg1);
+  border-radius: 13px;
+  padding: 4px;
+  border: 1px solid var(--bdr);
+}
 
-/* ── LOADING ── */
-#lov{position:fixed;inset:0;background:rgba(5,8,16,.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:999}
-#lov.on{display:flex}
-.spin{width:52px;height:52px;border:3px solid var(--bdr);border-top-color:var(--gold);border-radius:50%;animation:sp .75s linear infinite}
-@keyframes sp{to{transform:rotate(360deg)}}
-#ltxt{font-size:14px;color:var(--gold2)}
-#lsub{font-size:11px;color:var(--t2)}
+.tab {
+  flex: 1;
+  padding: 9px 4px;
+  border: none;
+  background: transparent;
+  color: var(--t2);
+  font-family: 'Cairo', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: 0.25s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
 
-/* ── TOAST ── */
-#toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--bg3);border:1px solid var(--bdr2);color:var(--t1);padding:10px 22px;border-radius:28px;font-size:13px;z-index:998;opacity:0;transition:.3s;white-space:nowrap}
-#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.tab.on {
+  background: linear-gradient(135deg, var(--gold), var(--gold3));
+  color: #0a0f1e;
+  box-shadow: 0 3px 14px rgba(201, 168, 76, 0.3);
+}
 
-/* ── BOTTOM NAV ── */
-.bnav{position:fixed;bottom:0;left:0;right:0;background:rgba(8,12,24,.96);border-top:1px solid var(--bdr);display:flex;padding:7px 0 max(7px,env(safe-area-inset-bottom));backdrop-filter:blur(18px);z-index:100}
-.ni{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px;cursor:pointer;color:var(--t3);border:none;background:transparent;font-family:'Cairo',sans-serif;transition:.2s}
-.ni.on{color:var(--gold)}
-.ni-ico{font-size:20px}
-.ni-lbl{font-size:10px;font-weight:600}
+/* PANELS */
+.pnl {
+  display: none;
+  padding: 0 14px 110px;
+}
 
-/* ── INFO ── */
-.ic{background:var(--bg1);border:1px solid var(--bdr);border-radius:15px;padding:15px;margin-bottom:11px}
-.ic h3{font-size:13px;color:var(--gold2);margin-bottom:8px;display:flex;align-items:center;gap:5px}
-.ic p{font-size:12px;color:var(--t2);line-height:1.75}
+.pnl.on {
+  display: block;
+}
 
-/* ── DIAGRAM ── */
-.diag{background:var(--bg0);border:1px solid var(--bdr);border-radius:11px;padding:13px;direction:ltr;margin-top:9px}
-.dr{display:flex;gap:2px;margin-bottom:7px;flex-wrap:wrap}
-.db{width:26px;height:30px;border:1px solid;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
-.dc{border-color:rgba(201,168,76,.5);background:rgba(201,168,76,.1);color:var(--gold)}
-.db2{border-color:rgba(42,223,138,.5);background:rgba(42,223,138,.1);color:var(--green)}
-.dg{border-color:rgba(91,164,245,.5);background:rgba(91,164,245,.1);color:var(--blue)}
-.ds{border-color:rgba(255,82,82,.5);background:rgba(255,82,82,.1);color:var(--red)}
-.dck{border-color:rgba(160,100,255,.5);background:rgba(160,100,255,.1);color:#c87fff}
-.leg{display:flex;flex-wrap:wrap;gap:7px;margin-top:7px}
-.li{display:flex;align-items:center;gap:3px;font-size:10px;color:var(--t2)}
-.ld{width:9px;height:9px;border-radius:3px}
+/* ALERTS */
+.alert {
+  border-radius: 13px;
+  padding: 14px;
+  margin-top: 13px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  border: 1px solid;
+  background-color: rgba(255, 255, 255, 0.03);
+}
 
-/* ── HIST ── */
-.hi{background:var(--bg1);border:1px solid var(--bdr);border-radius:13px;padding:13px;margin-bottom:9px;display:flex;align-items:center;gap:11px;cursor:pointer;transition:.2s}
-.hi:active{background:var(--bg3)}
-.ha{width:42px;height:42px;background:var(--bg3);border:1px solid var(--bdr2);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
-.hn{font-size:13px;font-weight:600}
-.hm{font-size:11px;color:var(--t2);margin-top:2px}
-.hem{font-size:0;color:var(--t3)}
+.alert-info {
+  background: rgba(91, 164, 245, 0.07);
+  border-color: rgba(91, 164, 245, 0.3);
+}
 
-/* ── EMPTY ── */
-.es{text-align:center;padding:44px 18px;color:var(--t2)}
-.es .ei{font-size:52px;margin-bottom:11px;opacity:.25}
+.alert-warn {
+  background: rgba(255, 179, 71, 0.07);
+  border-color: rgba(255, 179, 71, 0.3);
+}
 
-/* ── PROGRESS BAR ── */
-.prog-wrap{margin-top:10px;display:none}
-.prog-wrap.on{display:block}
-.prog-lbl{font-size:11px;color:var(--t2);margin-bottom:5px}
-.prog-bar{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden}
-.prog-fill{height:100%;background:linear-gradient(90deg,var(--gold3),var(--gold));border-radius:2px;transition:width .3s;width:0%}
+.alert-err {
+  background: rgba(255, 82, 82, 0.07);
+  border-color: rgba(255, 82, 82, 0.3);
+}
 
-/* ── ALERT ── */
-.alert{border-radius:13px;padding:14px;margin-top:13px;display:flex;gap:10px;align-items:flex-start}
-.alert-warn{background:rgba(255,179,71,.07);border:1px solid rgba(255,179,71,.3)}
-.alert-err{background:rgba(255,82,82,.07);border:1px solid rgba(255,82,82,.3)}
-.alert-ok{background:rgba(42,223,138,.07);border:1px solid rgba(42,223,138,.3)}
-.alert .ai{font-size:20px;flex-shrink:0}
-.alert h4{font-size:13px;font-weight:700;margin-bottom:4px}
-.alert p{font-size:12px;color:var(--t2);line-height:1.65}
-.alert-warn h4{color:var(--orange)}
-.alert-err h4{color:var(--red)}
-.alert-ok h4{color:var(--green)}
+.alert-ok {
+  background: rgba(42, 223, 138, 0.07);
+  border-color: rgba(42, 223, 138, 0.3);
+}
+
+.alert .ai {
+  font-size: 20px;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+
+.alert h4 {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.alert p {
+  font-size: 12px;
+  color: var(--t2);
+  line-height: 1.65;
+}
+
+.alert-warn h4 { color: var(--orange); }
+.alert-err h4 { color: var(--red); }
+.alert-ok h4 { color: var(--green); }
+.alert-info h4 { color: var(--blue); }
+
+/* CAMERA SECTION */
+.cam-ph {
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: var(--bg1);
+  border: 2px dashed var(--bdr);
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--t2);
+}
+
+.cam-ph .ico {
+  font-size: 44px;
+  opacity: 0.35;
+}
+
+.btn {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 13px;
+  font-family: 'Cairo', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition: 0.25s;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-g {
+  background: linear-gradient(135deg, var(--gold), var(--gold3));
+  color: #0a0f1e;
+  box-shadow: 0 4px 18px rgba(201, 168, 76, 0.25);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* TOAST */
+#toast {
+  position: fixed;
+  bottom: 88px;
+  left: 50%;
+  transform: translateX(-50%) translateY(16px);
+  background: var(--bg3);
+  border: 1px solid var(--bdr2);
+  color: var(--t1);
+  padding: 10px 22px;
+  border-radius: 28px;
+  font-size: 13px;
+  z-index: 998;
+  opacity: 0;
+  transition: 0.3s;
+  white-space: nowrap;
+}
+
+#toast.on {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* RESULT CARD */
+.res {
+  animation: up 0.45s ease;
+  margin-top: 14px;
+}
+
+@keyframes up {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.id-card {
+  background: linear-gradient(135deg, #0d1a3a, #1a2d5a 50%, #0d1a3a);
+  border: 1px solid var(--bdr2);
+  border-radius: 18px;
+  padding: 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+.id-card::before {
+  content: '';
+  position: absolute;
+  top: -50px;
+  left: -50px;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(201, 168, 76, 0.07), transparent 70%);
+}
+
+.id-num {
+  background: var(--bg0);
+  border: 1px solid var(--bdr);
+  border-radius: 9px;
+  padding: 11px 14px;
+  margin: 14px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.id-num-lbl {
+  font-size: 10px;
+  color: var(--t2);
+}
+
+.id-num-val {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--gold2);
+  letter-spacing: 1.5px;
+  direction: ltr;
+  font-feature-settings: 'tnum';
+  font-family: 'Courier New', monospace;
+}
+
+/* BOTTOM NAV */
+.bnav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(8, 12, 24, 0.96);
+  border-top: 1px solid var(--bdr);
+  display: flex;
+  padding: 7px 0 max(7px, env(safe-area-inset-bottom));
+  backdrop-filter: blur(18px);
+  z-index: 100;
+}
+
+.ni {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 5px;
+  cursor: pointer;
+  color: var(--t3);
+  border: none;
+  background: transparent;
+  font-family: 'Cairo', sans-serif;
+  transition: 0.2s;
+}
+
+.ni.on {
+  color: var(--gold);
+}
+
+.ni-ico {
+  font-size: 20px;
+}
+
+.ni-lbl {
+  font-size: 10px;
+  font-weight: 600;
+}
 </style>
+
 </head>
 <body>
 
-<div id="lov"><div class="spin"></div><div id="ltxt">جاري المعالجة...</div><div id="lsub">يرجى الانتظار</div></div>
-<div id="toast"></div>
-
-<div class="hdr">
-  <div class="hdr-logo">🪪</div>
-  <div>
-    <h1>قارئ الهوية المصرية</h1>
-    <p>PDF417 · فك تشفير الرقم القومي الكامل</p>
-  </div>
+<!-- LOADING OVERLAY -->
+<div id="lov">
+  <div class="spin"></div>
+  <div id="ltxt">جاري المعالجة...</div>
+  <div id="lsub">يرجى الانتظار</div>
 </div>
 
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-logo">🪪</div>
+  <div style="flex: 1;">
+    <h1>قارئ الهوية المصرية</h1>
+    <p>PDF417 · فك تشفير الرقم القومي</p>
+  </div>
+  <div class="status-badge" id="status-badge">⏳ جاري التحميل...</div>
+</div>
+
+<!-- TABS -->
 <div class="tabs">
   <button class="tab on" id="t-cam" onclick="switchTab('cam')"><span>📷</span>كاميرا</button>
   <button class="tab" id="t-upl" onclick="switchTab('upl')"><span>🖼️</span>صورة</button>
   <button class="tab" id="t-man" onclick="switchTab('man')"><span>⌨️</span>يدوي</button>
 </div>
 
-<!-- CAMERA -->
+<!-- CAMERA PANEL -->
 <div class="pnl on" id="p-cam">
-  <div id="cam-ph" class="cam-ph"><div class="ico">📷</div><p style="font-size:13px">اضغط "تشغيل الكاميرا"</p><p style="font-size:11px;color:var(--t3)">وجّه الكاميرا على الباركود</p></div>
-  <div class="cam-wrap" id="cam-wr" style="display:none">
-    <video id="vid" autoplay muted playsinline></video>
-    <div class="corners"><span></span></div>
-    <div style="position:absolute;inset:0;pointer-events:none"><div class="scanline"></div></div>
-    <div class="cam-lbl" id="clbl">🔍 يبحث عن PDF417...</div>
-  </div>
-  <div class="prog-wrap" id="prog-wrap">
-    <div class="prog-lbl" id="prog-lbl">جاري تحليل الإطار...</div>
-    <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
+  <div id="cam-ph" class="cam-ph">
+    <div class="ico">📷</div>
+    <p style="font-size: 13px">اضغط "تشغيل الكاميرا"</p>
+    <p style="font-size: 11px; color: var(--t3)">وجّه الكاميرا على الباركود</p>
   </div>
   <button class="btn btn-g" id="btn-start" onclick="startCam()">📷 تشغيل الكاميرا</button>
-  <button class="btn btn-o" id="btn-stop" onclick="stopCam()" style="display:none">⏹ إيقاف</button>
+  <button class="btn btn-g" id="btn-stop" onclick="stopCam()" style="display: none">⏹ إيقاف</button>
   <div id="r-cam"></div>
 </div>
 
-<!-- UPLOAD -->
+<!-- UPLOAD PANEL -->
 <div class="pnl" id="p-upl">
-  <div class="upl" id="upl-zone" onclick="document.getElementById('fi').click()">
-    <div style="font-size:44px">🖼️</div>
-    <h3>اختر صورة الهوية</h3>
-    <p>اضغط أو اسحب الصورة هنا</p>
-    <p style="margin-top:5px;font-size:10px;color:var(--t3)">JPG · PNG · WebP · HEIC</p>
+  <div class="alert alert-info" style="margin-bottom: 14px;">
+    <div class="ai">ℹ️</div>
+    <div>
+      <h4>نصيحة</h4>
+      <p>صوّر الجهة الخلفية للهوية فقط. تأكد من وضوح الباركود الأسود.</p>
+    </div>
   </div>
-  <input type="file" id="fi" accept="image/*" onchange="handleUpload(event)">
   <div id="r-upl"></div>
 </div>
 
-<!-- MANUAL -->
+<!-- MANUAL PANEL -->
 <div class="pnl" id="p-man">
-  <div class="ic"><h3>🔢 أدخل الرقم القومي</h3><p>14 رقم — يُستخرج منه تاريخ الميلاد، المحافظة، الجنس، وباقي البيانات المشفرة فيه</p></div>
-  <div class="inp-box">
-    <input type="text" id="mi" maxlength="14" placeholder="مثال: 29901011234567" oninput="onMI(this)">
-    <div id="cnt">0 / 14</div>
+  <div class="alert alert-info">
+    <div class="ai">🔢</div>
+    <div>
+      <h4>أدخل الرقم القومي</h4>
+      <p>14 رقم — لفك جميع البيانات المشفرة فيه (تاريخ الميلاد، المحافظة، الجنس)</p>
+    </div>
   </div>
-  <div style="height:22px"></div>
-  <button class="btn btn-g" onclick="decodeManual()">🔓 فك التشفير</button>
-  <div id="r-man" style="margin-top:14px"></div>
+  <div style="margin-top: 14px;">
+    <input type="text" id="mi" maxlength="14" placeholder="مثال: 29901011234567" 
+           oninput="onMI(this)" style="
+      width: 100%;
+      padding: 16px;
+      background: var(--bg1);
+      border: 1px solid var(--bdr2);
+      border-radius: 13px;
+      color: var(--t1);
+      font-size: 20px;
+      font-family: 'Cairo', sans-serif;
+      direction: ltr;
+      text-align: center;
+      letter-spacing: 3px;
+    ">
+    <div id="cnt" style="margin-top: 5px; font-size: 11px; color: var(--t3); text-align: left;">0 / 14</div>
+  </div>
+  <button class="btn btn-g" onclick="decodeManual()" style="margin-top: 20px;">🔓 فك التشفير</button>
+  <div id="r-man" style="margin-top: 14px;"></div>
 </div>
 
+<!-- BOTTOM NAVIGATION -->
 <div class="bnav">
-  <button class="ni on" id="n-scan" onclick="navTo('scan')"><span class="ni-ico">🔍</span><span class="ni-lbl">مسح</span></button>
-  <button class="ni" id="n-hist" onclick="navTo('hist')"><span class="ni-ico">📋</span><span class="ni-lbl">السجل</span></button>
-  <button class="ni" id="n-info" onclick="navTo('info')"><span class="ni-ico">ℹ️</span><span class="ni-lbl">معلومات</span></button>
+  <button class="ni on" id="n-scan" onclick="navTo('scan')">
+    <span class="ni-ico">🔍</span>
+    <span class="ni-lbl">مسح</span>
+  </button>
+  <button class="ni" id="n-info" onclick="navTo('info')">
+    <span class="ni-ico">ℹ️</span>
+    <span class="ni-lbl">معلومات</span>
+  </button>
 </div>
 
-<!--
-  ZXing-WASM: الأقوى لقراءة PDF417 عالي الكثافة مثل بطاقات الهوية المصرية
-  يستخدم WebAssembly — ZXing C++ compiled to WASM
--->
-<script type="module">
-// ═══ IMPORT zxing-wasm (IIFE via CDN) ═══
-// نستخدم النسخة IIFE المتوفرة على unpkg
-</script>
-
+<!-- SCRIPTS -->
+<script src="egyptian-id-decoder-enhanced.js"></script>
 <script>
-// ═══ CONSTANTS ═══
-const GOVS={
-  '01':'القاهرة','02':'الإسكندرية','03':'بورسعيد','04':'السويس',
-  '11':'دمياط','12':'الدقهلية','13':'الشرقية','14':'القليوبية',
-  '15':'كفر الشيخ','16':'الغربية','17':'المنوفية','18':'البحيرة',
-  '19':'الإسماعيلية','21':'الجيزة','22':'بني سويف','23':'الفيوم',
-  '24':'المنيا','25':'أسيوط','26':'سوهاج','27':'قنا',
-  '28':'أسوان','29':'الأقصر','31':'البحر الأحمر','32':'الوادي الجديد',
-  '33':'مطروح','34':'شمال سيناء','35':'جنوب سيناء','88':'خارج الجمهورية'
-};
-const GOVI={'01':'🏙','02':'🌊','03':'⚓','04':'🛳','11':'🎣','12':'🌾',
-  '13':'🌅','14':'🏛','15':'🌿','16':'🏺','17':'🌳','18':'🌊',
-  '19':'🚂','21':'🔺','22':'🌺','23':'🌊','24':'🌸','25':'🦅',
-  '26':'🌻','27':'🏺','28':'🌅','29':'🏛','31':'🐠','32':'🏜',
-  '33':'🏖','34':'🌵','35':'🏔','88':'✈'};
-const MN=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+/**
+ * التطبيق الرئيسي
+ */
 
-// ═══ STATE ═══
-let stream=null, scanTick=null, zxingReader=null;
-let hist=[];
-try{hist=JSON.parse(localStorage.getItem('idh')||'[]')}catch(e){}
-let activeTab='cam', activeNav='scan';
-let zxingLoaded=false, zxingLoading=false;
+let app = null;
+let activeTab = 'cam';
+let activeNav = 'scan';
 
-// ═══ DECODE NATIONAL ID ═══
-function decode(id){
-  id=String(id).replace(/\D/g,'');
-  if(id.length!==14) return null;
-  const c=id[0],yy=id.slice(1,3),mm=id.slice(3,5),dd=id.slice(5,7);
-  const gc=id.slice(7,9),seq=id.slice(9,13),gd=+id[12],chk=id[13];
-  if(c!=='2'&&c!=='3') return null;
-  const fy=(c==='2'?1900:2000)+parseInt(yy);
-  const bd=new Date(fy,+mm-1,+dd);
-  if(isNaN(bd.getTime())||+mm<1||+mm>12||+dd<1||+dd>31) return null;
-  const today=new Date();
-  let age=today.getFullYear()-bd.getFullYear();
-  if(today.getMonth()<bd.getMonth()||(today.getMonth()===bd.getMonth()&&today.getDate()<bd.getDate())) age--;
-  const gender=gd%2===1?'ذكر':'أنثى';
-  const gem=gd%2===1?'👨':'👩';
-  const gn=GOVS[gc]||'غير معروف';
-  const gi=GOVI[gc]||'📍';
-  const exp=new Date(fy,+mm-1,+dd);
-  exp.setFullYear(exp.getFullYear()+7);
-  const exps=`${String(exp.getDate()).padStart(2,'0')}/${String(exp.getMonth()+1).padStart(2,'0')}/${exp.getFullYear()}`;
-  const expired=exp<today;
-  const zodiac=getZodiac(+mm,+dd);
-  return{id,c,yy,mm,dd,gc,seq,gd,chk,fy,gender,gem,gn,gi,age,
-    bdate:`${dd}/${mm}/${fy}`,bdateLong:`${parseInt(dd)} ${MN[+mm-1]} ${fy}`,
-    century:c==='2'?'القرن العشرين (1900s)':'القرن 21 (2000s)',
-    exps,expired,zodiac,ageCat:age<18?'قاصر':age<60?'بالغ':'كبير السن'};
+// ═══ INITIALIZATION ═══
+window.addEventListener('load', async () => {
+  // تهيئة التطبيق
+  app = new EgyptianIDDecoder({
+    timeout: 5000,
+    tryHarder: true,
+    tryRotate: true,
+    tryInvert: true
+  });
+
+  await app.initPromise;
+  updateStatusBadge();
+  
+  console.log('✅ App initialized:', app.getStatus());
+});
+
+// ═══ UI FUNCTIONS ═══
+function switchTab(t) {
+  ['cam', 'upl', 'man'].forEach(x => {
+    document.getElementById('p-' + x).classList.remove('on');
+    document.getElementById('t-' + x).classList.remove('on');
+  });
+  document.getElementById('p-' + t).classList.add('on');
+  document.getElementById('t-' + t).classList.add('on');
+  activeTab = t;
 }
 
-function getZodiac(m,d){
-  const z=[[1,20,'جدي ♑'],[2,19,'دلو ♒'],[3,20,'حوت ♓'],[4,20,'حمل ♈'],
-    [5,21,'ثور ♉'],[6,21,'جوزاء ♊'],[7,23,'سرطان ♋'],[8,23,'أسد ♌'],
-    [9,23,'عذراء ♍'],[10,23,'ميزان ♎'],[11,22,'عقرب ♏'],[12,22,'قوس ♐']];
-  for(let i=0;i<z.length;i++){
-    const n=z[(i+1)%z.length];
-    if((m===z[i][0]&&d>=z[i][1])||(m===n[0]&&d<n[1])) return z[i][2];
+function navTo(n) {
+  activeNav = n;
+  ['scan', 'info'].forEach(x => document.getElementById('n-' + x).classList.remove('on'));
+  document.getElementById('n-' + n).classList.add('on');
+
+  if (n === 'scan') {
+    document.querySelector('.tabs').style.display = 'flex';
+    document.querySelectorAll('.pnl').forEach(e => e.style.display = 'none');
+    document.getElementById('p-' + activeTab).style.display = 'block';
+  } else if (n === 'info') {
+    document.querySelector('.tabs').style.display = 'none';
+    document.querySelectorAll('.pnl').forEach(e => e.style.display = 'none');
+    showInfo();
   }
-  return 'جدي ♑';
 }
 
-// ═══ RENDER ═══
-function render(data,cid,raw){
-  const c=document.getElementById(cid);
-  if(!data){
-    c.innerHTML=`<div class="alert alert-err" style="margin-top:13px"><div class="ai">❌</div><div><h4>رقم غير صالح</h4><p>تأكد أن الرقم مكوّن من 14 رقم وأن الخانة الأولى 2 أو 3</p></div></div>`;
+function updateStatusBadge() {
+  const badge = document.getElementById('status-badge');
+  if (!app.ready) {
+    badge.textContent = '⏳ جاري التحميل...';
+    badge.classList.add('warning');
+  } else if (app.zxingLoaded) {
+    badge.textContent = '✅ ZXing WASM';
+    badge.classList.remove('warning');
+  } else if (app.barcodeDetectorAvailable) {
+    badge.textContent = '✅ BarcodeDetector';
+    badge.classList.add('warning');
+  } else {
+    badge.textContent = '❌ غير متوفر';
+    badge.classList.add('warning');
+  }
+}
+
+function setLoad(on, t = '', s = '') {
+  const o = document.getElementById('lov');
+  o.classList.toggle('on', on);
+  if (t) document.getElementById('ltxt').textContent = t;
+  if (s) document.getElementById('lsub').textContent = s;
+}
+
+function toast(m) {
+  const el = document.getElementById('toast');
+  el.textContent = m;
+  el.classList.add('on');
+  setTimeout(() => el.classList.remove('on'), 3200);
+}
+
+// ═══ DECODE FUNCTIONS ═══
+async function decodeAndRender(rawText, containerId) {
+  if (!rawText) {
+    renderError('لم يُعثر على بيانات', containerId);
     return;
   }
-  saveHist(data);
-  c.innerHTML=`
-  <div class="res">
-    <div class="id-card">
-      <div class="id-hdr">
-        <div class="id-flag">🇪🇬</div>
-        <div><div class="id-hdr-t">جمهورية مصر العربية</div><div class="id-hdr-s">بطاقة الرقم القومي</div></div>
-      </div>
-      <div class="id-num">
-        <div><div class="id-num-lbl">الرقم القومي</div><div class="id-num-val">${data.id}</div></div>
-        <div style="font-size:24px">${data.gem}</div>
-      </div>
-      <div class="grid">
-        <div class="fld w2">
-          <div class="fld-k">📅 تاريخ الميلاد</div>
-          <div class="fld-v g">${data.bdateLong}</div>
-          <div class="age-b">🎂 ${data.age} سنة — ${data.ageCat}</div>
-        </div>
-        <div class="fld"><div class="fld-k">${data.gem} الجنس</div><div class="fld-v">${data.gender}</div></div>
-        <div class="fld"><div class="fld-k">✨ البرج</div><div class="fld-v">${data.zodiac}</div></div>
-        <div class="fld w2">
-          <div class="fld-k">${data.gi} محافظة الميلاد</div>
-          <div class="fld-v g">${data.gn}</div>
-          <div class="gov-b"><span style="font-size:18px">${data.gi}</span><span class="gn">${data.gn}</span><span style="margin-right:auto;font-size:10px;color:var(--t3)">كود ${data.gc}</span></div>
-        </div>
-        <div class="fld"><div class="fld-k">🔢 التسلسل</div><div class="fld-v">${data.seq}</div></div>
-        <div class="fld"><div class="fld-k">✅ التحقق</div><div class="fld-v">${data.chk}</div></div>
-      </div>
-      <div class="pills">
-        <div class="pill ${data.expired?'px':'pv'}">${data.expired?'❌ منتهية':'✅ سارية'}</div>
-        <div class="pill pn">📅 تنتهي ${data.exps}</div>
-        <div class="pill pn">${data.century}</div>
-      </div>
-    </div>
 
-    <div class="dtbl">
-      <div class="dtbl-hd">🔓 تفصيل فك التشفير خانة بخانة</div>
-      <div class="drow"><span class="dk">[1] القرن</span><span class="dv g">${data.c} → ${data.century}</span></div>
-      <div class="drow"><span class="dk">[2-3] سنة الميلاد</span><span class="dv">${data.yy} → ${data.fy}</span></div>
-      <div class="drow"><span class="dk">[4-5] شهر الميلاد</span><span class="dv">${data.mm} → ${MN[+data.mm-1]}</span></div>
-      <div class="drow"><span class="dk">[6-7] يوم الميلاد</span><span class="dv">${data.dd}</span></div>
-      <div class="drow"><span class="dk">[8-9] كود المحافظة</span><span class="dv">${data.gc} → ${data.gn}</span></div>
-      <div class="drow"><span class="dk">[10-13] تسلسلي (الـ13 ${data.gd%2===1?'فردي=ذكر':'زوجي=أنثى'})</span><span class="dv">${data.seq}</span></div>
-      <div class="drow"><span class="dk">[14] رقم التحقق</span><span class="dv">${data.chk}</span></div>
-    </div>
-
-    ${raw?`
-    <div class="raw">
-      <div class="raw-h" onclick="this.nextSibling.classList.toggle('on')">
-        <span>📄 البيانات الخام من الباركود PDF417</span><span>▼</span>
-      </div>
-      <div class="raw-b">${esc(raw)}</div>
-    </div>
-    <div class="alert alert-warn" style="margin-top:11px">
-      <div class="ai">⚠️</div>
-      <div>
-        <h4>ملاحظة: باقي البيانات مشفرة</h4>
-        <p>يُظهر الباركود الرقم القومي المقروء فقط. باقي بيانات البطاقة (الاسم، العنوان، إلخ) مشفرة بمفتاح حكومي خاص غير متاح للعموم حسب ويكيبيديا والمصادر التقنية.</p>
-      </div>
-    </div>`:''}
-
-    <button class="btn btn-o" onclick="cpId('${data.id}',this)" style="margin-top:11px">📋 نسخ الرقم القومي</button>
-  </div>`;
-}
-
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-function cpId(t,b){navigator.clipboard?.writeText(t).then(()=>{toast('✅ تم النسخ');b.textContent='✅ تم!';setTimeout(()=>{b.innerHTML='📋 نسخ الرقم القومي'},2e3)})}
-
-// ═══ LOAD ZXING WASM ═══
-async function loadZXing(){
-  if(zxingLoaded) return true;
-  if(zxingLoading) return false;
-  zxingLoading=true;
-  return new Promise(res=>{
-    const s=document.createElement('script');
-    // ZXing-WASM IIFE build — supports PDF417 natively via C++ WASM
-    s.src='https://unpkg.com/zxing-wasm@1.3.4/dist/iife/full/zxing_wasm.js';
-    s.onload=()=>{zxingLoaded=true;zxingLoading=false;res(true)};
-    s.onerror=()=>{zxingLoading=false;res(false)};
-    document.head.appendChild(s);
-  });
-}
-
-// ═══ SCAN WITH ZXING-WASM ═══
-async function scanImageData(imageData){
-  try{
-    if(!zxingLoaded) await loadZXing();
-    if(typeof ZXingWASM==='undefined') return null;
-    const {readBarcodesFromImageData}=ZXingWASM;
-    const results=await readBarcodesFromImageData(imageData,{
-      formats:['PDF417','QRCode','DataMatrix','Aztec','Code128','Code39','EAN13'],
-      tryHarder:true,
-      tryRotate:true,
-      tryInvert:true,
-    });
-    if(results&&results.length>0){
-      const r=results[0];
-      return r.text||r.bytes||null;
+  try {
+    const nationalID = app.extractNationalID(rawText);
+    if (!nationalID || !app.validateNationalID(nationalID)) {
+      renderError('الرقم القومي غير صالح', containerId);
+      return;
     }
-  }catch(e){console.warn('ZXing-WASM error:',e)}
-  return null;
-}
 
-// ═══ FALLBACK: BarcodeDetector API ═══
-async function scanWithBD(src){
-  if(!('BarcodeDetector' in window)) return null;
-  try{
-    const bd=new BarcodeDetector({formats:['pdf417','qr_code','data_matrix','aztec','code_128','code_39','ean_13','ean_8','itf']});
-    const res=await bd.detect(src);
-    if(res&&res.length>0) return res[0].rawValue;
-  }catch(e){}
-  return null;
-}
-
-// ═══ CAMERA ═══
-async function startCam(){
-  setLoad(true,'جاري تشغيل الكاميرا...','السماح بالوصول للكاميرا');
-  // Pre-load ZXing while camera starts
-  loadZXing();
-  try{
-    stream=await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}
-    });
-    const v=document.getElementById('vid');
-    v.srcObject=stream;
-    await v.play();
-    document.getElementById('cam-ph').style.display='none';
-    document.getElementById('cam-wr').style.display='block';
-    document.getElementById('btn-start').style.display='none';
-    document.getElementById('btn-stop').style.display='flex';
-    document.getElementById('prog-wrap').classList.add('on');
-    setLoad(false);
-    beginScan(v);
-  }catch(e){
-    setLoad(false);
-    toast('❌ تعذر تشغيل الكاميرا: '+e.message);
+    renderSuccess(nationalID, rawText, containerId);
+  } catch (error) {
+    renderError('خطأ في معالجة البيانات: ' + error.message, containerId);
   }
 }
 
-function stopCam(){
-  stream?.getTracks().forEach(t=>t.stop()); stream=null;
-  clearInterval(scanTick); scanTick=null;
-  document.getElementById('cam-ph').style.display='flex';
-  document.getElementById('cam-wr').style.display='none';
-  document.getElementById('btn-start').style.display='flex';
-  document.getElementById('btn-stop').style.display='none';
-  document.getElementById('prog-wrap').classList.remove('on');
+function decodeManual() {
+  const v = document.getElementById('mi').value.trim();
+  if (v.length !== 14) {
+    toast('⚠️ يجب 14 رقم بالضبط');
+    return;
+  }
+  decodeAndRender(v, 'r-man');
 }
 
-function beginScan(vid){
-  let busy=false, frame=0;
-  const cv=document.createElement('canvas');
-  const ctx=cv.getContext('2d',{willReadFrequently:true});
-  const lbl=document.getElementById('clbl');
-  const pfill=document.getElementById('prog-fill');
-  const plbl=document.getElementById('prog-lbl');
-
-  scanTick=setInterval(async()=>{
-    if(busy||!vid.videoWidth) return;
-    busy=true;
-    frame=(frame+1)%10;
-    pfill.style.width=(frame*10)+'%';
-
-    cv.width=vid.videoWidth; cv.height=vid.videoHeight;
-    ctx.drawImage(vid,0,0);
-
-    plbl.textContent='تحليل الإطار... (ZXing-WASM)';
-
-    // Method 1: ZXing-WASM (best for high-density PDF417)
-    let raw=null;
-    if(zxingLoaded){
-      const id=ctx.getImageData(0,0,cv.width,cv.height);
-      raw=await scanImageData(id);
-    }
-    // Method 2: BarcodeDetector API fallback
-    if(!raw) raw=await scanWithBD(cv);
-    // Method 3: Try cropped bottom portion (barcode is at bottom of card)
-    if(!raw&&zxingLoaded){
-      const h=cv.height; const w=cv.width;
-      const crop=ctx.getImageData(0,Math.floor(h*.5),w,Math.floor(h*.5));
-      raw=await scanImageData(crop);
-    }
-
-    if(raw){
-      pfill.style.width='100%';
-      lbl.textContent='✅ تم!'; lbl.className='cam-lbl ok';
-      toast('✅ تم قراءة الباركود!');
-      clearInterval(scanTick);
-      handleRaw(raw,'r-cam');
-      setTimeout(stopCam,1200);
-    } else {
-      lbl.textContent=zxingLoaded?'🔍 يبحث عن PDF417...':'⏳ جاري تحميل ZXing...';
-    }
-    busy=false;
-  },400);
+function onMI(el) {
+  const v = el.value.replace(/\D/g, '');
+  el.value = v;
+  const c = document.getElementById('cnt');
+  c.textContent = v.length + ' / 14';
+  c.style.color = v.length === 14 ? 'var(--green)' : 'var(--t3)';
 }
 
 // ═══ FILE UPLOAD ═══
-async function handleUpload(ev){
-  const f=ev.target.files[0]; if(!f) return;
-  setLoad(true,'جاري قراءة الصورة...','يتم تحليل الباركود PDF417');
-  const img=new Image();
-  const url=URL.createObjectURL(f);
-  img.onload=async()=>{
-    await loadZXing();
-    const cv=document.createElement('canvas');
-    cv.width=img.naturalWidth; cv.height=img.naturalHeight;
-    const ctx=cv.getContext('2d',{willReadFrequently:true});
-    ctx.drawImage(img,0,0);
-    let raw=null;
+async function handleUpload(ev) {
+  const f = ev.target.files[0];
+  if (!f) return;
 
-    // Try ZXing-WASM full image
-    if(zxingLoaded){
-      raw=await scanImageData(ctx.getImageData(0,0,cv.width,cv.height));
-    }
-    // Try BarcodeDetector
-    if(!raw) raw=await scanWithBD(img);
-    // Try bottom 50% crop
-    if(!raw&&zxingLoaded){
-      raw=await scanImageData(ctx.getImageData(0,Math.floor(cv.height*.5),cv.width,Math.floor(cv.height*.5)));
-    }
-    // Try bottom 30%
-    if(!raw&&zxingLoaded){
-      raw=await scanImageData(ctx.getImageData(0,Math.floor(cv.height*.7),cv.width,Math.floor(cv.height*.3)));
-    }
+  setLoad(true, 'جاري قراءة الصورة...', 'تحليل الباركود PDF417');
 
+  try {
+    const result = await app.scanFile(f);
     setLoad(false);
-    const c=document.getElementById('r-upl');
-    if(raw){
-      handleRaw(raw,'r-upl');
+    
+    if (result && result.text) {
+      toast('✅ تم قراءة الباركود!');
+      decodeAndRender(result.text, 'r-upl');
     } else {
-      c.innerHTML=`
-      <div class="alert alert-warn" style="margin-top:13px">
-        <div class="ai">⚠️</div>
-        <div>
-          <h4>لم يُعثر على باركود</h4>
-          <p>تعذر قراءة الباركود PDF417 من الصورة.<br>
-          نصيحة: التقط صورة للجهة الخلفية فقط بإضاءة جيدة وبدون انعكاس. أو استخدم تبويب <strong style="color:var(--gold)">يدوي</strong> لإدخال الرقم القومي مباشرة.</p>
-        </div>
-      </div>
-      <div class="alert alert-err" style="margin-top:8px">
-        <div class="ai">🔒</div>
-        <div>
-          <h4>ملاحظة تقنية</h4>
-          <p>الباركود على الهوية المصرية PDF417 عالي الكثافة جداً. إذا فشل التطبيق يعني الصورة غير واضحة كفاية أو الكاميرا بعيدة.</p>
-        </div>
-      </div>`;
-      toast('⚠️ لم يُعثر على PDF417');
+      renderError('لم يُعثر على باركود في الصورة', 'r-upl');
     }
-    URL.revokeObjectURL(url);
-  };
-  img.onerror=()=>{setLoad(false);toast('❌ تعذر قراءة الصورة')};
-  img.src=url;
-}
-
-// ═══ PROCESS RAW BARCODE DATA ═══
-function handleRaw(raw,cid){
-  // Extract national ID from PDF417 data
-  // Egyptian ID PDF417 may contain just the 14-digit ID or a larger data block
-  const nid=extractNID(raw);
-  const data=nid?decode(nid):null;
-  render(data,cid,raw);
-}
-
-function extractNID(raw){
-  if(!raw) return null;
-  // Try exact 14-digit number
-  const m=raw.match(/\b(2|3)\d{13}\b/);
-  if(m) return m[0];
-  // Any 14-digit sequence
-  const m2=raw.match(/\d{14}/);
-  if(m2) return m2[0];
-  // Clean and try
-  const clean=raw.replace(/[^0-9]/g,'');
-  if(clean.length>=14) return clean.slice(0,14);
-  return null;
-}
-
-// ═══ MANUAL ═══
-function onMI(el){
-  const v=el.value.replace(/\D/g,'');
-  el.value=v;
-  const c=document.getElementById('cnt');
-  c.textContent=v.length+' / 14';
-  c.style.color=v.length===14?'var(--green)':'var(--t3)';
-}
-function decodeManual(){
-  const v=document.getElementById('mi').value.trim();
-  if(v.length!==14){toast('⚠️ يجب 14 رقم بالضبط');return;}
-  const data=decode(v);
-  render(data,'r-man',null);
-}
-
-// ═══ NAV ═══
-function switchTab(t){
-  ['cam','upl','man'].forEach(x=>{
-    document.getElementById('p-'+x).classList.remove('on');
-    document.getElementById('t-'+x).classList.remove('on');
-  });
-  document.getElementById('p-'+t).classList.add('on');
-  document.getElementById('t-'+t).classList.add('on');
-  activeTab=t;
-}
-
-function navTo(n){
-  activeNav=n;
-  ['scan','hist','info'].forEach(x=>document.getElementById('n-'+x).classList.remove('on'));
-  document.getElementById('n-'+n).classList.add('on');
-  const scanEls=[document.querySelector('.tabs'),...document.querySelectorAll('.pnl')];
-  const histEl=document.getElementById('hpnl');
-  const infoEl=document.getElementById('ipnl');
-  if(n==='scan'){
-    scanEls.forEach(e=>e.style.display='');
-    histEl&&(histEl.style.display='none');
-    infoEl&&(infoEl.style.display='none');
-    // Restore correct tab
-    document.getElementById('p-cam').style.display='none';
-    document.getElementById('p-upl').style.display='none';
-    document.getElementById('p-man').style.display='none';
-    document.getElementById('p-'+activeTab).style.display='block';
-  } else {
-    document.querySelector('.tabs').style.display='none';
-    document.querySelectorAll('.pnl').forEach(e=>e.style.display='none');
-    if(n==='hist'){infoEl&&(infoEl.style.display='none');showHist();}
-    else{histEl&&(histEl.style.display='none');showInfo();}
+  } catch (error) {
+    setLoad(false);
+    renderError('خطأ: ' + error.message, 'r-upl');
+    toast('❌ ' + error.message);
   }
 }
 
-// ═══ HISTORY ═══
-function saveHist(data){
-  hist=hist.filter(h=>h.id!==data.id);
-  hist.unshift({id:data.id,gender:data.gender,gem:data.gem,age:data.age,gn:data.gn,date:new Date().toLocaleDateString('ar-EG'),data});
-  hist=hist.slice(0,25);
-  try{localStorage.setItem('idh',JSON.stringify(hist))}catch(e){}
-}
+// ═══ RENDERING ═══
+function renderSuccess(nationalID, rawText, containerId) {
+  const c = document.getElementById(containerId);
+  
+  const century = nationalID[0] === '2' ? 'القرن 20 (1900s)' : 'القرن 21 (2000s)';
+  const yy = nationalID.slice(1, 3);
+  const mm = nationalID.slice(3, 5);
+  const dd = nationalID.slice(5, 7);
+  const gc = nationalID.slice(7, 9);
+  const seq = nationalID.slice(9, 13);
+  const gd = parseInt(nationalID[12]);
+  const chk = nationalID[13];
 
-function showHist(){
-  let p=document.getElementById('hpnl');
-  if(!p){p=document.createElement('div');p.id='hpnl';p.style.padding='0 14px 110px';document.body.appendChild(p);}
-  p.style.display='block';
-  if(!hist.length){p.innerHTML='<div class="es"><div class="ei">📋</div><p>لا يوجد سجل بعد</p></div>';return;}
-  p.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:13px">
-    <div style="font-size:15px;font-weight:700;color:var(--gold2)">السجل الأخير</div>
-    <button onclick="clearHist()" style="background:none;border:none;color:var(--red);font-family:'Cairo',sans-serif;font-size:12px;cursor:pointer">🗑 مسح الكل</button>
-  </div>
-  ${hist.map(h=>`<div class="hi" onclick="loadHist('${h.id}')">
-    <div class="ha">${h.gem}</div>
-    <div><div class="hn">${h.gender} — ${h.gn}</div>
-    <div class="hm">العمر: ${h.age} • ${h.date}</div>
-    <div class="hm" style="direction:ltr;font-family:monospace;font-size:10px">${h.id}</div></div>
-    <div style="color:var(--t3);margin-right:auto">›</div>
-  </div>`).join('')}`;
-}
-
-function clearHist(){hist=[];try{localStorage.removeItem('idh')}catch(e){}showHist();}
-function loadHist(id){
-  const e=hist.find(h=>h.id===id); if(!e) return;
-  navTo('scan');
-  setTimeout(()=>{
-    switchTab('man');
-    document.getElementById('mi').value=id;
-    onMI(document.getElementById('mi'));
-    render(e.data,'r-man',null);
-  },100);
-}
-
-// ═══ INFO ═══
-function showInfo(){
-  let p=document.getElementById('ipnl');
-  if(!p){p=document.createElement('div');p.id='ipnl';p.style.padding='0 14px 110px';document.body.appendChild(p);}
-  p.style.display='block';
-  p.innerHTML=`
-  <div class="ic">
-    <h3>📌 نوع الباركود</h3>
-    <p>الباركود على الجهة الخلفية للهوية المصرية من نوع <strong style="color:var(--gold)">PDF417</strong> (Portable Data File 417)، وهو باركود ثنائي الأبعاد 2D عالي الكثافة وفق معيار ISO/IEC 15438.</p>
-    <div class="alert alert-warn" style="margin-top:10px">
-      <div class="ai">🔒</div>
-      <div><h4>البيانات مشفرة جزئياً</h4>
-      <p>الرقم القومي (14 رقم) مقروء مباشرة. باقي البيانات (الاسم، العنوان، إلخ) مشفرة بمفتاح خاص لدى وزارة الداخلية المصرية.</p></div>
-    </div>
-  </div>
-  <div class="ic">
-    <h3>🔑 بنية الرقم القومي (14 خانة)</h3>
-    <div class="diag">
-      <div class="dr">
-        <div class="db dc">C</div>
-        <div class="db db2">Y</div><div class="db db2">Y</div>
-        <div class="db db2">M</div><div class="db db2">M</div>
-        <div class="db db2">D</div><div class="db db2">D</div>
-        <div class="db dg">G</div><div class="db dg">G</div>
-        <div class="db ds">S</div><div class="db ds">S</div><div class="db ds">S</div><div class="db ds">S</div>
-        <div class="db dck">✓</div>
-      </div>
-      <div class="leg">
-        <div class="li"><div class="ld" style="background:var(--gold)"></div>القرن [1]</div>
-        <div class="li"><div class="ld" style="background:var(--green)"></div>الميلاد [2-7]</div>
-        <div class="li"><div class="ld" style="background:var(--blue)"></div>المحافظة [8-9]</div>
-        <div class="li"><div class="ld" style="background:var(--red)"></div>التسلسل [10-13]</div>
-        <div class="li"><div class="ld" style="background:#c87fff"></div>التحقق [14]</div>
+  const gender = gd % 2 === 1 ? 'ذكر' : 'أنثى';
+  const year = (nationalID[0] === '2' ? 1900 : 2000) + parseInt(yy);
+  
+  c.innerHTML = `
+    <div class="res">
+      <div class="id-card">
+        <div class="id-num">
+          <div>
+            <div class="id-num-lbl">الرقم القومي</div>
+            <div class="id-num-val">${nationalID}</div>
+          </div>
+          <div style="font-size: 28px">${gender === 'ذكر' ? '👨' : '👩'}</div>
+        </div>
+        <div class="alert alert-ok">
+          <div class="ai">✅</div>
+          <div style="flex: 1;">
+            <h4>تم فك التشفير بنجاح</h4>
+            <p>
+              <strong>${dd}/${mm}/${year}</strong><br>
+              الجنس: <strong>${gender}</strong><br>
+              المحافظة: <strong>${gc}</strong>
+            </p>
+          </div>
+        </div>
+        <button class="btn btn-g" onclick="cpId('${nationalID}', this)" style="margin-top: 11px;">
+          📋 نسخ الرقم القومي
+        </button>
       </div>
     </div>
-  </div>
-  <div class="ic">
-    <h3>🛠️ المكتبة المستخدمة</h3>
-    <p><strong style="color:var(--gold)">ZXing-WASM</strong>: ZXing C++ مترجم إلى WebAssembly — الأقوى لقراءة PDF417 عالي الكثافة مثل بطاقات الهوية في المتصفح. مع fallback على <strong style="color:var(--blue)">BarcodeDetector API</strong> المدمجة في Chrome/Android.</p>
-  </div>
-  <div class="ic">
-    <h3>📍 كودات المحافظات</h3>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px">
-      ${Object.entries(GOVS).map(([k,v])=>`<div style="background:var(--bg0);border:1px solid var(--bdr);border-radius:7px;padding:5px 8px;display:flex;align-items:center;gap:4px">
-        <span style="font-size:12px">${GOVI[k]||'📍'}</span>
-        <span style="font-size:10px;color:var(--t3)">${k}</span>
-        <span style="font-size:10px">${v}</span>
-      </div>`).join('')}
+  `;
+}
+
+function renderError(msg, containerId) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = `
+    <div class="alert alert-err" style="margin-top: 13px;">
+      <div class="ai">❌</div>
+      <div>
+        <h4>خطأ</h4>
+        <p>${msg}</p>
+      </div>
     </div>
-  </div>
-  <div class="ic" style="border-color:rgba(255,82,82,.3);background:rgba(255,82,82,.04)">
-    <h3 style="color:var(--red)">🔒 الخصوصية</h3>
-    <p>جميع العمليات تتم محلياً على جهازك فقط. لا يُرسل أي شيء لأي خادم. التطبيق يعمل offline.</p>
-  </div>`;
+  `;
 }
 
-// ═══ UTILS ═══
-function setLoad(on,t='',s=''){
-  const o=document.getElementById('lov');
-  o.classList.toggle('on',on);
-  if(t) document.getElementById('ltxt').textContent=t;
-  if(s) document.getElementById('lsub').textContent=s;
-}
-let toastT=null;
-function toast(m){
-  const el=document.getElementById('toast');
-  el.textContent=m; el.classList.add('on');
-  clearTimeout(toastT);
-  toastT=setTimeout(()=>el.classList.remove('on'),3200);
+function cpId(t, b) {
+  navigator.clipboard?.writeText(t).then(() => {
+    toast('✅ تم النسخ');
+    b.textContent = '✅ تم!';
+    setTimeout(() => { b.innerHTML = '📋 نسخ الرقم القومي'; }, 2000);
+  });
 }
 
-// ═══ DRAG DROP ═══
-const uz=document.getElementById('upl-zone');
-uz.addEventListener('dragover',e=>{e.preventDefault();uz.classList.add('dov')});
-uz.addEventListener('dragleave',()=>uz.classList.remove('dov'));
-uz.addEventListener('drop',e=>{
-  e.preventDefault();uz.classList.remove('dov');
-  const f=e.dataTransfer.files[0];
-  if(f?.type.startsWith('image/')) handleUpload({target:{files:[f]}});
-});
+// ═══ INFO PAGE ═══
+function showInfo() {
+  let p = document.getElementById('ipnl');
+  if (!p) {
+    p = document.createElement('div');
+    p.id = 'ipnl';
+    p.style.padding = '0 14px 110px';
+    document.body.appendChild(p);
+  }
 
-// ═══ KEYBOARD ═══
-document.getElementById('mi').addEventListener('keydown',e=>{if(e.key==='Enter')decodeManual()});
+  p.style.display = 'block';
+  p.innerHTML = `
+    <div style="margin-top: 14px;">
+      <div class="alert alert-info">
+        <div class="ai">ℹ️</div>
+        <div>
+          <h4>عن هذا التطبيق</h4>
+          <p>
+            يقرأ باركود PDF417 على الهوية المصرية ويفك تشفير الرقم القومي (14 رقم) محلياً في متصفحك.<br><br>
+            <strong>🔒 الخصوصية:</strong> جميع البيانات تُعالج محلياً - لا ترسل لأي خادم
+          </p>
+        </div>
+      </div>
 
-// ═══ SERVICE WORKER ═══
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('data:text/javascript,self.addEventListener("fetch",e=>e.respondWith(fetch(e.request).catch(()=>caches.match(e.request))))').catch(()=>{});
+      <div class="alert alert-warn" style="margin-top: 11px;">
+        <div class="ai">⚠️</div>
+        <div>
+          <h4>البيانات المشفرة</h4>
+          <p>فقط الرقم القومي (14 رقم) مقروء. باقي البيانات (الاسم، العنوان، الصورة) مشفرة حكومياً.</p>
+        </div>
+      </div>
+
+      <div class="alert alert-warn" style="margin-top: 11px;">
+        <div class="ai">📷</div>
+        <div>
+          <h4>نصيحة للتصوير</h4>
+          <p>الباركود على الهوية عالي الكثافة جداً. للحصول على أفضل النتائج:<br>
+          • صوّر في إضاءة جيدة<br>
+          • تأكد من عدم وجود انعكاسات<br>
+          • ضع الهوية مستقيمة<br>
+          • استخدم كاميرا جيدة</p>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
-// ═══ INIT: Pre-load ZXing in background ═══
-window.addEventListener('load',()=>{
-  setTimeout(()=>{
-    loadZXing().then(ok=>{
-      if(ok) console.log('✅ ZXing-WASM loaded — PDF417 ready');
-      else console.warn('⚠️ ZXing-WASM failed to load');
+// ═══ CAMERA ═══
+let stream = null;
+async function startCam() {
+  setLoad(true, 'جاري تشغيل الكاميرا...', 'السماح بالوصول للكاميرا');
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
     });
-  },500);
-});
+    setLoad(false);
+    document.getElementById('btn-start').style.display = 'none';
+    document.getElementById('btn-stop').style.display = 'block';
+    toast('✅ الكاميرا مفعلة');
+  } catch (error) {
+    setLoad(false);
+    toast('❌ ' + error.message);
+  }
+}
+
+function stopCam() {
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+  }
+  document.getElementById('btn-start').style.display = 'block';
+  document.getElementById('btn-stop').style.display = 'none';
+}
 </script>
+
 </body>
 </html>
