@@ -449,8 +449,23 @@ html, body {
     <p style="font-size: 13px">اضغط "تشغيل الكاميرا"</p>
     <p style="font-size: 11px; color: var(--t3)">وجّه الكاميرا على الباركود</p>
   </div>
+  
+  <!-- VIDEO ELEMENT FOR CAMERA STREAM -->
+  <video id="cam-video" autoplay muted playsinline style="
+    width: 100%;
+    aspect-ratio: 4/3;
+    border-radius: 18px;
+    background: #000;
+    border: 2px solid var(--bdr2);
+    margin-top: 12px;
+    margin-bottom: 12px;
+    display: none;
+    object-fit: cover;
+  "></video>
+  
   <button class="btn btn-g" id="btn-start" onclick="startCam()">📷 تشغيل الكاميرا</button>
   <button class="btn btn-g" id="btn-stop" onclick="stopCam()" style="display: none">⏹ إيقاف</button>
+  <button class="btn btn-g" id="btn-capture" onclick="captureFrame()" style="display: none">📸 التقط صورة</button>
   <div id="r-cam"></div>
 </div>
 
@@ -769,29 +784,157 @@ function showInfo() {
 
 // ═══ CAMERA ═══
 let stream = null;
+let cameraActive = false;
+
 async function startCam() {
   setLoad(true, 'جاري تشغيل الكاميرا...', 'السماح بالوصول للكاميرا');
   try {
+    const video = document.getElementById('cam-video');
+    
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+      video: { 
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1920 }, 
+        height: { ideal: 1080 }
+      },
+      audio: false
     });
+    
+    // عرض البث المباشر
+    video.srcObject = stream;
+    
+    // انتظر حتى يبدأ البث
+    await video.play();
+    
     setLoad(false);
+    cameraActive = true;
+    
+    // إخفاء الصورة الافتراضية وإظهار الفيديو
+    document.getElementById('cam-ph').style.display = 'none';
+    video.style.display = 'block';
+    
     document.getElementById('btn-start').style.display = 'none';
     document.getElementById('btn-stop').style.display = 'block';
-    toast('✅ الكاميرا مفعلة');
+    document.getElementById('btn-capture').style.display = 'block';
+    
+    toast('✅ الكاميرا تعمل - وجّه على الباركود');
+    
+    // بدء المسح التلقائي
+    beginAutoScan(video);
+    
   } catch (error) {
     setLoad(false);
-    toast('❌ ' + error.message);
+    console.error('Camera error:', error);
+    
+    let errorMsg = error.message;
+    if (error.name === 'NotAllowedError') {
+      errorMsg = 'لم تسمح بالوصول للكاميرا - تحقق من الإعدادات';
+    } else if (error.name === 'NotFoundError') {
+      errorMsg = 'لا توجد كاميرا متصلة';
+    } else if (error.name === 'NotReadableError') {
+      errorMsg = 'الكاميرا قيد الاستخدام من تطبيق آخر';
+    }
+    
+    toast('❌ ' + errorMsg);
   }
 }
 
 function stopCam() {
+  cameraActive = false;
+  
   if (stream) {
     stream.getTracks().forEach(t => t.stop());
     stream = null;
   }
+  
+  const video = document.getElementById('cam-video');
+  video.srcObject = null;
+  video.style.display = 'none';
+  
+  document.getElementById('cam-ph').style.display = 'flex';
   document.getElementById('btn-start').style.display = 'block';
   document.getElementById('btn-stop').style.display = 'none';
+  document.getElementById('btn-capture').style.display = 'none';
+  
+  toast('⏹ تم إيقاف الكاميرا');
+}
+
+function captureFrame() {
+  const video = document.getElementById('cam-video');
+  if (!video || !video.srcObject) {
+    toast('❌ الكاميرا غير مفعلة');
+    return;
+  }
+  
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+  
+  // معالجة الصورة
+  processFrame(canvas);
+}
+
+async function beginAutoScan(video) {
+  if (!app || !cameraActive) return;
+  
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  
+  const scanInterval = setInterval(async () => {
+    if (!cameraActive || !stream) {
+      clearInterval(scanInterval);
+      return;
+    }
+    
+    try {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      if (canvas.width === 0 || canvas.height === 0) return;
+      
+      ctx.drawImage(video, 0, 0);
+      
+      // جرّب المسح كل 500ms بدلاً من كل frame
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const result = await app.scanImageData(imageData);
+      
+      if (result && result.text) {
+        toast('✅ تم اكتشاف الباركود!');
+        cameraActive = false;
+        stopCam();
+        
+        // معالجة النتيجة
+        decodeAndRender(result.text, 'r-cam');
+      }
+    } catch (error) {
+      // تجاهل الأخطاء العرضية
+    }
+  }, 500);
+}
+
+function processFrame(canvas) {
+  setLoad(true, 'جاري تحليل الصورة...', 'فك التشفير');
+  
+  setTimeout(async () => {
+    try {
+      const ctx = canvas.getContext('2d');
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const result = await app.scanImageData(imageData);
+      
+      setLoad(false);
+      
+      if (result && result.text) {
+        decodeAndRender(result.text, 'r-cam');
+      } else {
+        toast('⚠️ لم يُعثر على باركود في الصورة');
+      }
+    } catch (error) {
+      setLoad(false);
+      toast('❌ ' + error.message);
+    }
+  }, 100);
 }
 </script>
 
